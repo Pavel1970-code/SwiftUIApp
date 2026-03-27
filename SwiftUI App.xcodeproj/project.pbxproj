@@ -9,6 +9,15 @@
 /* Begin PBXBuildFile section */
 		F56F712D2F760FDB00433536 /* SwiftUI_AppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */; };
 		F56F712F2F760FDB00433536 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712E2F760FDB00433536 /* ContentView.swift */; };
+		A1B2C3D4E5F60718293A4B01 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C01 /* DashboardView.swift */; };
+		A1B2C3D4E5F60718293A4B02 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C02 /* GlassCard.swift */; };
+		A1B2C3D4E5F60718293A4B03 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C03 /* StatusPill.swift */; };
+		A1B2C3D4E5F60718293A4B04 /* ReceiverPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C04 /* ReceiverPickerSheet.swift */; };
+		A1B2C3D4E5F60718293A4B05 /* DonationsAmountSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C05 /* DonationsAmountSheet.swift */; };
+		A1B2C3D4E5F60718293A4B06 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C06 /* HistoryView.swift */; };
+		A1B2C3D4E5F60718293A4B07 /* PartnersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C07 /* PartnersView.swift */; };
+		A1B2C3D4E5F60718293A4B08 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */; };
+		A1B2C3D4E5F60718293A4B09 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C09 /* Models.swift */; };
 		F56F71312F760FDF00433536 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F56F71302F760FDF00433536 /* Assets.xcassets */; };
 		F56F71342F760FDF00433536 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F56F71332F760FDF00433536 /* Preview Assets.xcassets */; };
 		F56F71362F760FDF00433536 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F71352F760FDF00433536 /* Persistence.swift */; };
@@ -39,6 +48,15 @@
 		F56F71292F760FDB00433536 /* SwiftUI App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SwiftUI App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_AppApp.swift; sourceTree = "<group>"; };
 		F56F712E2F760FDB00433536 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C01 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C02 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C03 /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C04 /* ReceiverPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiverPickerSheet.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C05 /* DonationsAmountSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DonationsAmountSheet.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C06 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C07 /* PartnersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnersView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C09 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		F56F71302F760FDF00433536 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F56F71332F760FDF00433536 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F56F71352F760FDF00433536 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
@@ -100,6 +118,15 @@
 			children = (
 				F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */,
 				F56F712E2F760FDB00433536 /* ContentView.swift */,
+				A1B2C3D4E5F60718293A4C01 /* DashboardView.swift */,
+				A1B2C3D4E5F60718293A4C02 /* GlassCard.swift */,
+				A1B2C3D4E5F60718293A4C03 /* StatusPill.swift */,
+				A1B2C3D4E5F60718293A4C04 /* ReceiverPickerSheet.swift */,
+				A1B2C3D4E5F60718293A4C05 /* DonationsAmountSheet.swift */,
+				A1B2C3D4E5F60718293A4C06 /* HistoryView.swift */,
+				A1B2C3D4E5F60718293A4C07 /* PartnersView.swift */,
+				A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */,
+				A1B2C3D4E5F60718293A4C09 /* Models.swift */,
 				F56F71302F760FDF00433536 /* Assets.xcassets */,
 				F56F71352F760FDF00433536 /* Persistence.swift */,
 				F56F71372F760FDF00433536 /* SwiftUI_App.xcdatamodeld */,
@@ -263,6 +290,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F60718293A4B09 /* Models.swift in Sources */,
+				A1B2C3D4E5F60718293A4B08 /* SettingsView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B07 /* PartnersView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B06 /* HistoryView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B05 /* DonationsAmountSheet.swift in Sources */,
+				A1B2C3D4E5F60718293A4B04 /* ReceiverPickerSheet.swift in Sources */,
+				A1B2C3D4E5F60718293A4B03 /* StatusPill.swift in Sources */,
+				A1B2C3D4E5F60718293A4B02 /* GlassCard.swift in Sources */,
+				A1B2C3D4E5F60718293A4B01 /* DashboardView.swift in Sources */,
 				F56F71362F760FDF00433536 /* Persistence.swift in Sources */,
 				F56F712F2F760FDB00433536 /* ContentView.swift in Sources */,
 				F56F712D2F760FDB00433536 /* SwiftUI_AppApp.swift in Sources */,
