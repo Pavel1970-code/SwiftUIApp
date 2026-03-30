@@ -1,13 +1,22 @@
 import SwiftUI
 
+/// Press feedback without `DragGesture`, which often fights `Button` + `ScrollView` and blocks taps (especially on Simulator).
+private struct GlassCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+    }
+}
+
 struct GlassCard<Content: View>: View {
     let action: (() -> Void)?
+    let isDisabled: Bool
     @ViewBuilder var content: Content
 
-    @State private var isPressed = false
-
-    init(action: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
+    init(action: (() -> Void)? = nil, isDisabled: Bool = false, @ViewBuilder content: () -> Content) {
         self.action = action
+        self.isDisabled = isDisabled
         self.content = content()
     }
 
@@ -16,19 +25,16 @@ struct GlassCard<Content: View>: View {
             if let action {
                 Button(action: action) {
                     cardContent
+                        // Full-tile hit testing (blur/material often shrinks the tappable area).
+                        .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
                 }
-                .buttonStyle(.plain)
-                .scaleEffect(isPressed ? 0.97 : 1)
-                .animation(.easeOut(duration: 0.14), value: isPressed)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in isPressed = true }
-                        .onEnded { _ in isPressed = false }
-                )
+                .buttonStyle(GlassCardButtonStyle())
+                .disabled(isDisabled)
             } else {
                 cardContent
             }
         }
+        .opacity(isDisabled ? 0.55 : 1)
     }
 
     private var cardContent: some View {

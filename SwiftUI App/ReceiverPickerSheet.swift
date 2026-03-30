@@ -39,6 +39,12 @@ struct ReceiverPickerSheet: View {
                 }
             }
         }
+        .onAppear {
+            appState.startBLEScanning()
+        }
+        .onDisappear {
+            appState.stopBLEScanning()
+        }
         .preferredColorScheme(.dark)
     }
 }

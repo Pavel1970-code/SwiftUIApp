@@ -5,7 +5,10 @@ struct DashboardView: View {
 
     @State private var showReceiverSheet = false
     @State private var showAmountSheet = false
+    @State private var showDailySheet = false
     @State private var showSuccess = false
+    @State private var showNearbyHint = false
+    @State private var nearbyHintText = "Start session and wait for nearby active"
 
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 14),
@@ -35,6 +38,13 @@ struct DashboardView: View {
             if showSuccess {
                 successOverlay
             }
+            if showNearbyHint {
+                VStack {
+                    Spacer()
+                    nearbyHintOverlay
+                        .padding(.bottom, 24)
+                }
+            }
         }
         .sheet(isPresented: $showReceiverSheet) {
             ReceiverPickerSheet()
@@ -44,16 +54,14 @@ struct DashboardView: View {
             DonationsAmountSheet()
                 .environmentObject(appState)
         }
+        .sheet(isPresented: $showDailySheet) {
+            DailyPlaceholderSheet()
+        }
         .navigationBarBackButtonHidden(true)
         .navigationDestination(for: DashboardRoute.self) { route in
             switch route {
-            case .history:
-                HistoryView()
-                    .environmentObject(appState)
-            case .partners:
-                PartnersView()
-            case .settings:
-                SettingsView()
+            case .aura:
+                AuraView()
                     .environmentObject(appState)
             }
         }
@@ -63,7 +71,7 @@ struct DashboardView: View {
         HStack(spacing: 10) {
             CircleButton(icon: "chevron.left")
             Picker("Mode", selection: $appState.selectedTab) {
-                ForEach(DashboardTab.allCases) { tab in
+                ForEach(DashboardTab.segmentOrder) { tab in
                     Text(tab.rawValue).tag(tab)
                 }
             }
@@ -75,192 +83,383 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var thanksTiles: some View {
+        // Row 1 Left — toggle “accepting” + session timer / nearby pipeline
         GlassCard(action: appState.toggleAccepting) {
-            VStack(alignment: .leading, spacing: 10) {
-                Label(appState.isAccepting ? "Accepting" : "Start", systemImage: "bolt.heart")
-                    .font(.headline)
-                    .foregroundStyle(.white.opacity(0.95))
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("Session", "bolt.heart")
                 StatusPill(
                     title: appState.isAccepting ? "ON" : "OFF",
                     isActive: appState.isAccepting
                 )
+                Text(thanksSessionCaption)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.72))
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Session")
+            .accessibilityHint("Turns receiving thanks on or off for this timed session.")
         }
 
-        GlassCard(action: { showReceiverSheet = true }) {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Nearby", systemImage: "dot.radiowaves.left.and.right")
-                    .font(.headline)
-                    .foregroundStyle(.white.opacity(0.95))
-                Text(nearbyTitle)
-                    .foregroundStyle(.white.opacity(0.75))
+        // Row 1 Right — placeholder for future daily summary
+        GlassCard(action: { showDailySheet = true }) {
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("Daily", "sun.max.fill")
+                Text("Daily recap & streak")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                Text("Preview · not connected yet")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Daily")
+            .accessibilityHint("Opens a placeholder for daily mode.")
+        }
+
+        // Row 2 Left — quick send thanks (same receiver as Nearby)
+        GlassCard(action: handleDoubleTap) {
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("Quick thanks", "hand.tap.fill")
+                Text("Send without a separate send button")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text(doubleTapSubtitle)
                     .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.82))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Quick thanks")
+            .accessibilityHint(doubleTapSubtitle)
         }
 
-        if appState.isAccepting {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Session", systemImage: "hourglass")
-                        .font(.headline)
-                        .foregroundStyle(.white.opacity(0.95))
-                    Text(formatTime(appState.sessionRemainingSeconds))
-                        .font(.system(size: 30, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-            }
-        }
-
-        GlassCard(action: sendThanks) {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("SEND THANKS", systemImage: "paperplane.fill")
-                    .font(.headline)
-                    .foregroundStyle(canSendThanks ? .white : .white.opacity(0.45))
-                Text(appState.selectedReceiver?.name ?? "Select receiver")
-                    .foregroundStyle(.white.opacity(0.75))
+        // Row 2 Right — MVP placeholder (no manual selection)
+        GlassCard(isDisabled: true) {
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("Nearby receiver", "dot.radiowaves.left.and.right")
+                Text("Tap Quick thanks when you receive an invite")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text(nearbySubtitle)
                     .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.82))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Nearby receiver")
+            .accessibilityHint("Disabled in MVP; response goes to the connected donor.")
         }
-        .opacity(canSendThanks ? 1 : 0.66)
 
-        NavigationLink(value: DashboardRoute.history) {
-            GlassCard {
-                tileLabel("History", "clock.arrow.circlepath")
-            }
-        }
-        .buttonStyle(.plain)
-
-        NavigationLink(value: DashboardRoute.partners) {
-            GlassCard {
-                tileLabel("Partners", "person.3.fill")
-            }
-        }
-        .buttonStyle(.plain)
-
-        NavigationLink(value: DashboardRoute.settings) {
-            GlassCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    tileLabel("Silence", "bell.slash.fill")
-                    StatusPill(title: appState.silenceMode ? "Enabled" : "Disabled", isActive: appState.silenceMode)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-
+        // Row 3 Left — read-only countdown mirror
         GlassCard {
-            tileLabel("Widget", "square.grid.2x2")
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("Time left", "hourglass")
+                Text(sessionEndsSecondaryLine)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text(sessionEndsDisplay)
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Time left in session")
+            .accessibilityValue(sessionEndsDisplay + ", " + sessionEndsSecondaryLine)
         }
+
+        // Row 3 Right — history, silence, partners, widget
+        NavigationLink(value: DashboardRoute.aura) {
+            GlassCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    tileLabel("Your Aura", "sparkles")
+                    Text("History · partners · silence · widget")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                    Text("Private activity & settings")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Your Aura")
+                .accessibilityHint("Opens history, partners placeholder, silence toggle, and widget info.")
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
     private var donationsTiles: some View {
-        ForEach(appState.donationPresets) { preset in
-            GlassCard(action: { appState.selectedDonationAmount = preset.amount }) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label(String(format: "$%.0f", preset.amount), systemImage: "dollarsign.circle")
-                        .font(.headline)
-                        .foregroundStyle(.white.opacity(0.95))
-                    Text("Preset amount")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.75))
-                }
+        // Row 1 Left — mock goal + opens same receiver picker as Gift Two
+        GlassCard(action: {
+            appState.selectedGiftId = 0
+            appState.selectedDonationAmount = nil
+            showReceiverSheet = true
+        }) {
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("Gift goal 1", "gift.fill")
+                Text("Placeholder artwork · mock")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text("Pick who receives the donation")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                Text(giftSubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.82))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Gift goal 1")
+            .accessibilityHint("Opens the receiver list. Same recipient is used for the whole donation flow.")
         }
 
+        // Row 1 Right
+        GlassCard(action: {
+            appState.selectedGiftId = 1
+            appState.selectedDonationAmount = nil
+            showReceiverSheet = true
+        }) {
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("Gift goal 2", "star.circle.fill")
+                Text("Placeholder artwork · mock")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text("Pick who receives the donation")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                Text(giftSubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.82))
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Gift goal 2")
+            .accessibilityHint("Opens the receiver list. Same recipient as Gift goal 1.")
+        }
+
+        // Row 2 Left — preset amount
+        GlassCard(action: {
+            appState.selectedGiftId = nil
+            appState.selectedDonationAmount = 1
+        }) {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("$1", systemImage: "dollarsign.circle")
+                    .font(.headline)
+                    .foregroundStyle(.white.opacity(0.95))
+                Text("Quick preset")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text(donationPresetStatusLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.82))
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("One dollar preset")
+            .accessibilityValue(donationPresetStatusLine)
+        }
+
+        // Row 2 Right — custom amount sheet
         GlassCard(action: { showAmountSheet = true }) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 Label("Choose your sum", systemImage: "slider.horizontal.3")
                     .font(.headline)
                     .foregroundStyle(.white.opacity(0.95))
-                Text(String(format: "$%.0f selected", appState.selectedDonationAmount))
+                Text("Slider mock · $1–$50")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text(donationAmountSubtitle)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(.white.opacity(0.82))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Choose donation amount")
+            .accessibilityHint("Opens a sheet to set a custom amount.")
         }
 
-        GlassCard(action: { showReceiverSheet = true }) {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Receiver", systemImage: "person.crop.circle.badge.checkmark")
-                    .font(.headline)
-                    .foregroundStyle(.white.opacity(0.95))
-                Text(appState.selectedReceiver?.name ?? "Select receiver")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.75))
+        // Row 3 Left — clear draft
+        GlassCard(action: appState.cancelDonation) {
+            VStack(alignment: .leading, spacing: 8) {
+                tileLabel("CANCEL", "xmark")
+                Text("Clears amount & receiver")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.85))
+                Text("Does not send anything")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Cancel")
+            .accessibilityHint("Resets the selected amount and receiver.")
         }
 
-        GlassCard(action: sendDonation) {
-            VStack(alignment: .leading, spacing: 10) {
+        // Row 3 Right — confirm + history entry (mock)
+        GlassCard(action: sendDonation, isDisabled: !canSendDonation) {
+            VStack(alignment: .leading, spacing: 8) {
                 Label("SEND", systemImage: "paperplane.fill")
                     .font(.headline)
                     .foregroundStyle(canSendDonation ? .white : .white.opacity(0.45))
-                Text("Send selected amount")
+                Text("Requires amount + receiver")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.65))
+                Text(sendDonationSubtitle)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(.white.opacity(0.82))
             }
-        }
-        .opacity(canSendDonation ? 1 : 0.66)
-
-        GlassCard(action: appState.cancelDonation) {
-            VStack(alignment: .leading, spacing: 10) {
-                tileLabel("CANCEL", "xmark")
-            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Send donation")
+            .accessibilityHint(sendDonationSubtitle)
         }
     }
 
-    private var canSendThanks: Bool {
-        appState.selectedReceiver != nil
+    private var donationPresetStatusLine: String {
+        appState.selectedDonationAmount == 1 ? "Selected for this send" : "Tap to use $1"
     }
 
     private var canSendDonation: Bool {
-        appState.selectedReceiver != nil
+        guard appState.selectedReceiver != nil else { return false }
+        return appState.selectedGiftId != nil || appState.selectedDonationAmount != nil
     }
 
-    private var nearbyTitle: String {
+    private var canOpenNearbyPicker: Bool {
+        appState.isAccepting && appState.nearbyState == .found
+    }
+
+    private var thanksSessionCaption: String {
+        if appState.isAccepting {
+            return "Timed session · tap to stop accepting thanks."
+        }
+        return "Starts a session and looks for nearby receivers."
+    }
+
+    private var nearbySubtitle: String {
+        if appState.pendingInvite != nil {
+            return "Invite received · tap Quick thanks"
+        }
         switch appState.nearbyState {
         case .idle:
-            return "Searching..."
+            return "Session off"
         case .searching:
-            return "Searching..."
+            return "Searching nearby…"
         case .found:
-            return "Nearby active"
+            return "Invite received · tap Quick thanks"
         }
     }
 
-    private func sendThanks() {
-        guard canSendThanks else {
-            showReceiverSheet = true
-            return
+    private var doubleTapSubtitle: String {
+        if appState.isAccepting && appState.pendingInvite != nil {
+            return "Tap to send thanks now"
         }
-        appState.sendThanks()
-        showSuccessBurst()
+        if !appState.isAccepting {
+            return "Turn Session on first"
+        }
+        return "Waiting for an invite"
+    }
+
+    private var sessionEndsSecondaryLine: String {
+        if !appState.isAccepting {
+            return "No active session"
+        }
+        return "Remaining in this session"
+    }
+
+    private var giftSubtitle: String {
+        if let receiver = appState.selectedReceiver {
+            return "Receiver: \(receiver.name)"
+        }
+        return "No receiver yet"
+    }
+
+    private var sendDonationSubtitle: String {
+        if appState.selectedReceiver == nil {
+            return "Choose a receiver via a gift goal tile"
+        }
+        if appState.selectedGiftId == nil && appState.selectedDonationAmount == nil {
+            return "Pick a gift tile or choose your sum"
+        }
+        return "Ready · send over BLE (MVP)"
+    }
+
+    private func handleDoubleTap() {
+        if appState.isAccepting && appState.pendingInvite != nil {
+            appState.sendThanks()
+            showSuccessBurst()
+        } else if appState.isAccepting {
+            showHint("Waiting for a nearby donation invite")
+        } else {
+            showHint("Start session first")
+        }
+    }
+
+    private func handleNearbyTap() {
+        if canOpenNearbyPicker {
+            showReceiverSheet = true
+        } else {
+            showHint(nearbyUnavailableHint)
+        }
+    }
+
+    private var nearbyUnavailableHint: String {
+        if !appState.isAccepting {
+            return "Turn Session on first"
+        }
+        if appState.nearbyState == .searching {
+            return "Wait until nearby is ready"
+        }
+        return "Nearby unavailable right now"
     }
 
     private func sendDonation() {
-        guard canSendDonation else {
-            showReceiverSheet = true
-            return
+        Task { @MainActor in
+            let ok = await appState.sendDonationOverBLE()
+            if ok {
+                showSuccessBurst()
+            } else {
+                showHint("Could not deliver donation (timeout)")
+            }
         }
-        appState.sendDonation()
-        showSuccessBurst()
+    }
+
+    private func showHint(_ text: String) {
+        nearbyHintText = text
+        withAnimation(.easeOut(duration: 0.2)) {
+            showNearbyHint = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                showNearbyHint = false
+            }
+        }
     }
 
     private func showSuccessBurst() {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.74)) {
             showSuccess = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             withAnimation(.easeOut(duration: 0.25)) {
                 showSuccess = false
             }
         }
     }
 
-    private func formatTime(_ seconds: Int) -> String {
+    private var donationAmountSubtitle: String {
+        if let amount = appState.selectedDonationAmount {
+            return "$\(amount) selected"
+        }
+        return "No amount selected"
+    }
+
+    private var sessionEndsDisplay: String {
+        guard appState.isAccepting else { return "—" }
+        let seconds = appState.sessionRemainingSeconds
+        if seconds <= 0 { return "0h" }
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
-        let secs = seconds % 60
-        return String(format: "%02d:%02d:%02d", hours, minutes, secs)
+        if hours > 0 && minutes > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        if hours > 0 {
+            return "\(hours)h"
+        }
+        return "\(minutes)m"
     }
 
     @ViewBuilder
@@ -311,12 +510,25 @@ struct DashboardView: View {
         )
         .transition(.scale.combined(with: .opacity))
     }
+
+    private var nearbyHintOverlay: some View {
+        Text(nearbyHintText)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
+            )
+            .transition(.opacity)
+    }
 }
 
 private enum DashboardRoute: Hashable {
-    case history
-    case partners
-    case settings
+    case aura
 }
 
 private struct CircleButton: View {
@@ -333,5 +545,30 @@ private struct CircleButton: View {
                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
             )
             .clipShape(Circle())
+    }
+}
+
+private struct DailyPlaceholderSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 14) {
+                Image(systemName: "sun.max.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(.yellow)
+                Text("Daily mode (coming soon)")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }

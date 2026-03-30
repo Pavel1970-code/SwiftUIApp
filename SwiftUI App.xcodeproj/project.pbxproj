@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F56F712D2F760FDB00433536 /* SwiftUI_AppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */; };
-		F56F712F2F760FDB00433536 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712E2F760FDB00433536 /* ContentView.swift */; };
 		A1B2C3D4E5F60718293A4B01 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C01 /* DashboardView.swift */; };
 		A1B2C3D4E5F60718293A4B02 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C02 /* GlassCard.swift */; };
 		A1B2C3D4E5F60718293A4B03 /* StatusPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C03 /* StatusPill.swift */; };
@@ -18,6 +16,10 @@
 		A1B2C3D4E5F60718293A4B07 /* PartnersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C07 /* PartnersView.swift */; };
 		A1B2C3D4E5F60718293A4B08 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */; };
 		A1B2C3D4E5F60718293A4B09 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C09 /* Models.swift */; };
+		A1B2C3D4E5F60718293A4B10 /* AuraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C10 /* AuraView.swift */; };
+		F54DA8472F7786DD00864086 /* Algorithms in Frameworks */ = {isa = PBXBuildFile; productRef = F54DA8462F7786DD00864086 /* Algorithms */; };
+		F56F712D2F760FDB00433536 /* SwiftUI_AppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */; };
+		F56F712F2F760FDB00433536 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712E2F760FDB00433536 /* ContentView.swift */; };
 		F56F71312F760FDF00433536 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F56F71302F760FDF00433536 /* Assets.xcassets */; };
 		F56F71342F760FDF00433536 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F56F71332F760FDF00433536 /* Preview Assets.xcassets */; };
 		F56F71362F760FDF00433536 /* Persistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F71352F760FDF00433536 /* Persistence.swift */; };
@@ -45,9 +47,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		F56F71292F760FDB00433536 /* SwiftUI App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SwiftUI App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_AppApp.swift; sourceTree = "<group>"; };
-		F56F712E2F760FDB00433536 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4C01 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4C02 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4C03 /* StatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPill.swift; sourceTree = "<group>"; };
@@ -57,6 +56,10 @@
 		A1B2C3D4E5F60718293A4C07 /* PartnersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnersView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4C09 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C10 /* AuraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraView.swift; sourceTree = "<group>"; };
+		F56F71292F760FDB00433536 /* SwiftUI App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SwiftUI App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_AppApp.swift; sourceTree = "<group>"; };
+		F56F712E2F760FDB00433536 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		F56F71302F760FDF00433536 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F56F71332F760FDF00433536 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		F56F71352F760FDF00433536 /* Persistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persistence.swift; sourceTree = "<group>"; };
@@ -73,6 +76,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F54DA8472F7786DD00864086 /* Algorithms in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,6 +131,7 @@
 				A1B2C3D4E5F60718293A4C07 /* PartnersView.swift */,
 				A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */,
 				A1B2C3D4E5F60718293A4C09 /* Models.swift */,
+				A1B2C3D4E5F60718293A4C10 /* AuraView.swift */,
 				F56F71302F760FDF00433536 /* Assets.xcassets */,
 				F56F71352F760FDF00433536 /* Persistence.swift */,
 				F56F71372F760FDF00433536 /* SwiftUI_App.xcdatamodeld */,
@@ -176,6 +181,9 @@
 			dependencies = (
 			);
 			name = "SwiftUI App";
+			packageProductDependencies = (
+				F54DA8462F7786DD00864086 /* Algorithms */,
+			);
 			productName = "SwiftUI App";
 			productReference = F56F71292F760FDB00433536 /* SwiftUI App.app */;
 			productType = "com.apple.product-type.application";
@@ -248,6 +256,9 @@
 				Base,
 			);
 			mainGroup = F56F71202F760FDB00433536;
+			packageReferences = (
+				F54DA8452F7786DD00864086 /* XCRemoteSwiftPackageReference "swift-algorithms" */,
+			);
 			productRefGroup = F56F712A2F760FDB00433536 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -291,6 +302,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F60718293A4B09 /* Models.swift in Sources */,
+				A1B2C3D4E5F60718293A4B10 /* AuraView.swift in Sources */,
 				A1B2C3D4E5F60718293A4B08 /* SettingsView.swift in Sources */,
 				A1B2C3D4E5F60718293A4B07 /* PartnersView.swift in Sources */,
 				A1B2C3D4E5F60718293A4B06 /* HistoryView.swift in Sources */,
@@ -471,6 +483,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Used to discover nearby users and exchange donation events via Bluetooth.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -499,6 +512,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Used to discover nearby users and exchange donation events via Bluetooth.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -626,6 +640,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F54DA8452F7786DD00864086 /* XCRemoteSwiftPackageReference "swift-algorithms" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-algorithms.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F54DA8462F7786DD00864086 /* Algorithms */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F54DA8452F7786DD00864086 /* XCRemoteSwiftPackageReference "swift-algorithms" */;
+			productName = Algorithms;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCVersionGroup section */
 		F56F71372F760FDF00433536 /* SwiftUI_App.xcdatamodeld */ = {
