@@ -1,0 +1,17 @@
+# Xcode / SwiftUI
+DerivedData/
+DerivedDataSim/
+
+# User settings/state
+**/xcuserdata/
+**/xcdebugger/
+**/*.xcuserstate
+
+# Build artifacts
+.build/
+
+# CocoaPods (if ever used)
+Pods/
+
+# SPM caches inside Xcode workspace (optional)
+**/xcshareddata/swiftpm/
