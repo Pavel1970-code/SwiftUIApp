@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ReceiverPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -12,12 +13,7 @@ struct ReceiverPickerSheet: View {
                     dismiss()
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: receiver.icon)
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .frame(width: 34, height: 34)
-                            .background(Color.white.opacity(0.12))
-                            .clipShape(Circle())
+                        avatar(for: receiver)
                         Text(receiver.name)
                             .foregroundStyle(.white.opacity(0.94))
                         Spacer()
@@ -46,5 +42,27 @@ struct ReceiverPickerSheet: View {
             appState.stopBLEScanning()
         }
         .preferredColorScheme(.dark)
+    }
+
+    @ViewBuilder
+    private func avatar(for receiver: Receiver) -> some View {
+        if let data = receiver.avatarData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 34, height: 34)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
+        } else {
+            Image(systemName: receiver.icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(width: 34, height: 34)
+                .background(Color.white.opacity(0.12))
+                .clipShape(Circle())
+        }
     }
 }

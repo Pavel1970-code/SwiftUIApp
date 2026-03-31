@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 import CoreBluetooth
+import UIKit
 
 /// Tab order in the dashboard segmented control: **left → right** = Donations, then Thanks.
 enum DashboardTab: String, CaseIterable, Identifiable {
@@ -24,6 +25,7 @@ struct Receiver: Identifiable, Equatable {
     let id: UUID
     let name: String
     let icon: String
+    let avatarData: Data?
 }
 
 struct DonationPreset: Identifiable {
@@ -49,6 +51,41 @@ struct HistoryEvent: Identifiable {
     let receiverLabel: String?
     let amount: Int?
     let timestamp: Date
+}
+
+struct BLELocalProfile {
+    let nickname: String
+    let avatarData: Data?
+}
+
+enum LocalProfileBridge {
+    private static let key = "local_profile_v1"
+
+    private struct StoredProfile: Codable {
+        let id: UUID
+        let displayName: String
+        let avatarData: Data?
+        let createdAt: Date
+    }
+
+    static func load() -> BLELocalProfile? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        guard let decoded = try? JSONDecoder().decode(StoredProfile.self, from: data) else { return nil }
+        return BLELocalProfile(
+            nickname: decoded.displayName,
+            avatarData: normalizedAvatar(decoded.avatarData)
+        )
+    }
+
+    private static func normalizedAvatar(_ raw: Data?) -> Data? {
+        guard let raw, let image = UIImage(data: raw) else { return nil }
+        let target = CGSize(width: 64, height: 64)
+        let renderer = UIGraphicsImageRenderer(size: target)
+        let thumb = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+        return thumb.jpegData(compressionQuality: 0.62)
+    }
 }
 
 @MainActor
@@ -77,6 +114,7 @@ final class AppState: ObservableObject {
 
     private let ble = BLEGiftSessionManager.shared
     private var peripheralForReceiverId: [UUID: CBPeripheral] = [:]
+    private var profileByPeripheralId: [UUID: (nickname: String, avatarData: Data?)] = [:]
 
     private var sessionTimer: AnyCancellable?
     private var nearbyWorkItem: DispatchWorkItem?
@@ -87,6 +125,16 @@ final class AppState: ObservableObject {
         }
         ble.onInviteReceived = { [weak self] invite in
             self?.handleInviteReceived(invite)
+        }
+        ble.onProfileReceived = { [weak self] peripheralId, nickname, avatarData in
+            self?.handlePeerProfile(
+                peripheralId: peripheralId,
+                nickname: nickname,
+                avatarData: avatarData
+            )
+        }
+        ble.profileProvider = {
+            LocalProfileBridge.load()
         }
     }
 
@@ -205,10 +253,12 @@ final class AppState: ObservableObject {
         let icons = ["circle.hexagongrid.fill", "sparkles", "waveform.path.ecg"]
         receivers = peripherals.prefix(3).enumerated().map { offset, peripheral in
             peripheralForReceiverId[peripheral.identifier] = peripheral
+            let profile = profileByPeripheralId[peripheral.identifier]
             return Receiver(
                 id: peripheral.identifier,
-                name: "Nearby #\(offset + 1)",
-                icon: icons[offset % icons.count]
+                name: profile?.nickname ?? "Nearby #\(offset + 1)",
+                icon: icons[offset % icons.count],
+                avatarData: profile?.avatarData
             )
         }
         nearbyState = receivers.isEmpty ? .searching : .found
@@ -219,7 +269,25 @@ final class AppState: ObservableObject {
         nearbyState = .found
 
         // MVP: on receiver we don't know which peer label (we just display a generic "Nearby #1").
-        selectedReceiver = Receiver(id: UUID(), name: "Nearby #1", icon: "circle.hexagongrid.fill")
+        selectedReceiver = Receiver(
+            id: UUID(),
+            name: "Nearby #1",
+            icon: "circle.hexagongrid.fill",
+            avatarData: nil
+        )
+    }
+
+    private func handlePeerProfile(peripheralId: UUID, nickname: String, avatarData: Data?) {
+        profileByPeripheralId[peripheralId] = (nickname: nickname, avatarData: avatarData)
+        receivers = receivers.map { receiver in
+            guard receiver.id == peripheralId else { return receiver }
+            return Receiver(
+                id: receiver.id,
+                name: nickname,
+                icon: receiver.icon,
+                avatarData: avatarData
+            )
+        }
     }
 
     // MARK: - Donor send over BLE
@@ -302,6 +370,8 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
     private var isScanning = false
 
     var onScanPeersChanged: (([CBPeripheral]) -> Void)?
+    var onProfileReceived: ((UUID, String, Data?) -> Void)?
+    var profileProvider: (() -> BLELocalProfile?)?
 
     // MARK: - Receiver state (advertising)
     private var rxCharacteristic: CBMutableCharacteristic?
@@ -316,6 +386,8 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
     // MARK: - Donor state (connecting + waiting THANKS)
     private var pendingThanksHandlers: [UInt32: (Bool) -> Void] = [:]
     private var pendingInviteToSend: (peripheral: CBPeripheral, invite: BLEInvite)?
+    private var outgoingNotifyQueue: [Data] = []
+    private var incomingProfileStateByPeripheral: [UUID: IncomingProfileState] = [:]
 
     private var connectedPeripheral: CBPeripheral?
     private var txForConnected: CBCharacteristic?
@@ -421,8 +493,10 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
     private func tryStartAdvertising() {
         guard peripheralManager.state == .poweredOn else { return }
         guard receiverServiceAdded else { return }
+        let localName = profileProvider?()?.nickname ?? "Nearby"
         peripheralManager.startAdvertising([
-            CBAdvertisementDataServiceUUIDsKey: [serviceUUID]
+            CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
+            CBAdvertisementDataLocalNameKey: String(localName.prefix(24))
         ])
     }
 
@@ -431,6 +505,12 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
         connectedPeripheral = nil
         txForConnected = nil
         rxForConnected = nil
+    }
+
+    private struct IncomingProfileState {
+        let nickname: String
+        let totalAvatarBytes: Int
+        var collectedAvatar: Data
     }
 
     private func encodeInvite(
@@ -466,6 +546,32 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
         return d
     }
 
+    // PROFILE_START frame:
+    // version(1) + type(1=4) + nameLen(1) + name + avatarTotalLen(2)
+    private func encodeProfileStart(nickname: String, avatarTotalLen: UInt16) -> Data {
+        let nameData = Data(nickname.utf8.prefix(60))
+        var d = Data()
+        d.reserveCapacity(1 + 1 + 1 + nameData.count + 2)
+        d.append(1) // version
+        d.append(4) // type profile-start
+        d.append(UInt8(nameData.count))
+        d.append(nameData)
+        d.append(contentsOf: bytesLE(avatarTotalLen))
+        return d
+    }
+
+    // PROFILE_CHUNK frame:
+    // version(1) + type(1=5) + chunkLen(1) + chunk
+    private func encodeProfileChunk(_ chunk: Data) -> Data {
+        var d = Data()
+        d.reserveCapacity(3 + chunk.count)
+        d.append(1) // version
+        d.append(5) // type profile-chunk
+        d.append(UInt8(chunk.count))
+        d.append(chunk)
+        return d
+    }
+
     private func decodeInvite(_ data: Data) -> BLEInvite? {
         // Expect 10 bytes.
         guard data.count == 10 else { return nil }
@@ -480,6 +586,40 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
         guard let kind = BLEInviteEventKind(rawValue: bytes[6]) else { return nil }
         let value = UInt16(bytes[7]) | (UInt16(bytes[8]) << 8)
         return BLEInvite(txId: txId, eventKind: kind, value: value)
+    }
+
+    private func enqueueProfileFrames() {
+        guard let profile = profileProvider?() else { return }
+        let avatar = profile.avatarData ?? Data()
+        let cappedAvatar = Data(avatar.prefix(1024))
+        let start = encodeProfileStart(
+            nickname: profile.nickname,
+            avatarTotalLen: UInt16(cappedAvatar.count)
+        )
+        outgoingNotifyQueue.append(start)
+
+        var cursor = 0
+        let chunkSize = 140
+        while cursor < cappedAvatar.count {
+            let end = min(cursor + chunkSize, cappedAvatar.count)
+            let chunk = cappedAvatar[cursor..<end]
+            outgoingNotifyQueue.append(encodeProfileChunk(Data(chunk)))
+            cursor = end
+        }
+        flushNotifyQueueIfPossible()
+    }
+
+    private func flushNotifyQueueIfPossible() {
+        guard let txCharacteristic else { return }
+        while !outgoingNotifyQueue.isEmpty {
+            let next = outgoingNotifyQueue[0]
+            let sent = peripheralManager.updateValue(next, for: txCharacteristic, onSubscribedCentrals: nil)
+            if sent {
+                outgoingNotifyQueue.removeFirst()
+            } else {
+                break
+            }
+        }
     }
 
     private func bytesLE<T: FixedWidthInteger>(_ value: T) -> [UInt8] {
@@ -509,6 +649,10 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
             discoveredPeripherals[pid] = peripheral
             let peers = scanOrder.compactMap { discoveredPeripherals[$0] }
             onScanPeersChanged?(peers)
+        }
+
+        if let localName = advertisementData[CBAdvertisementDataLocalNameKey] as? String {
+            onProfileReceived?(pid, localName, nil)
         }
     }
 
@@ -562,22 +706,63 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
         guard error == nil else { return }
         guard characteristic.uuid == txCharUUID else { return }
         guard let data = characteristic.value else { return }
-
-        guard data.count == 8 else { return }
         let bytes = [UInt8](data)
+        guard bytes.count >= 2 else { return }
         let version = bytes[0]
         let type = bytes[1]
-        guard version == 1, type == 3 else { return }
+        guard version == 1 else { return }
 
-        let txId = UInt32(bytes[2]) |
-            (UInt32(bytes[3]) << 8) |
-            (UInt32(bytes[4]) << 16) |
-            (UInt32(bytes[5]) << 24)
+        if type == 3 {
+            guard data.count == 8 else { return }
+            let txId = UInt32(bytes[2]) |
+                (UInt32(bytes[3]) << 8) |
+                (UInt32(bytes[4]) << 16) |
+                (UInt32(bytes[5]) << 24)
 
-        if let handler = pendingThanksHandlers.removeValue(forKey: txId) {
-            handler(true)
-            centralManager.cancelPeripheralConnection(peripheral)
-            stopConnectionState()
+            if let handler = pendingThanksHandlers.removeValue(forKey: txId) {
+                handler(true)
+                centralManager.cancelPeripheralConnection(peripheral)
+                stopConnectionState()
+            }
+            return
+        }
+
+        if type == 4 {
+            // PROFILE_START
+            guard bytes.count >= 5 else { return }
+            let nameLen = Int(bytes[2])
+            let header = 3 + nameLen + 2
+            guard bytes.count >= header else { return }
+            let nameBytes = bytes[3..<(3 + nameLen)]
+            let nickname = String(decoding: nameBytes, as: UTF8.self)
+            let totalLenIndex = 3 + nameLen
+            let totalAvatarLen = Int(UInt16(bytes[totalLenIndex]) | (UInt16(bytes[totalLenIndex + 1]) << 8))
+            incomingProfileStateByPeripheral[peripheral.identifier] = IncomingProfileState(
+                nickname: nickname.isEmpty ? "Nearby" : nickname,
+                totalAvatarBytes: totalAvatarLen,
+                collectedAvatar: Data()
+            )
+            if totalAvatarLen == 0 {
+                onProfileReceived?(peripheral.identifier, nickname.isEmpty ? "Nearby" : nickname, nil)
+                incomingProfileStateByPeripheral[peripheral.identifier] = nil
+            }
+            return
+        }
+
+        if type == 5 {
+            // PROFILE_CHUNK
+            guard var state = incomingProfileStateByPeripheral[peripheral.identifier] else { return }
+            guard bytes.count >= 3 else { return }
+            let chunkLen = Int(bytes[2])
+            guard bytes.count >= 3 + chunkLen else { return }
+            state.collectedAvatar.append(contentsOf: bytes[3..<(3 + chunkLen)])
+            if state.collectedAvatar.count >= state.totalAvatarBytes {
+                let avatar = state.totalAvatarBytes > 0 ? state.collectedAvatar.prefix(state.totalAvatarBytes) : Data()
+                onProfileReceived?(peripheral.identifier, state.nickname, avatar.isEmpty ? nil : Data(avatar))
+                incomingProfileStateByPeripheral[peripheral.identifier] = nil
+            } else {
+                incomingProfileStateByPeripheral[peripheral.identifier] = state
+            }
         }
     }
 
@@ -616,5 +801,14 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
             onInviteReceived?(invite)
             peripheral.respond(to: req, withResult: .success)
         }
+    }
+
+    func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
+        guard characteristic.uuid == txCharUUID else { return }
+        enqueueProfileFrames()
+    }
+
+    func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
+        flushNotifyQueueIfPossible()
     }
 }

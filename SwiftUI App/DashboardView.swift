@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject private var appState: AppState
+    let profileAvatarData: Data?
 
     @State private var showReceiverSheet = false
     @State private var showAmountSheet = false
@@ -77,7 +78,7 @@ struct DashboardView: View {
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: 220)
-            CircleButton(icon: "person.crop.circle")
+            ProfileAvatarBadge(avatarData: profileAvatarData)
         }
     }
 
@@ -545,6 +546,31 @@ private struct CircleButton: View {
                     .stroke(Color.white.opacity(0.2), lineWidth: 1)
             )
             .clipShape(Circle())
+    }
+}
+
+private struct ProfileAvatarBadge: View {
+    let avatarData: Data?
+
+    var body: some View {
+        Group {
+            if let avatarData, let image = UIImage(data: avatarData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "person.crop.circle")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.95))
+            }
+        }
+        .frame(width: 34, height: 34)
+        .background(.regularMaterial)
+        .overlay(
+            Circle()
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
+        .clipShape(Circle())
     }
 }
 
