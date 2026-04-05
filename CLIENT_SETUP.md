@@ -66,6 +66,10 @@ cd SwiftUIApp
 - В Xcode: **Product → Clean Build Folder** (зажать **Option** при меню **Product**), затем снова **Run**.
 - Убедиться, что открыт **`SwiftUI App.xcodeproj`**, а не копия папки без проекта.
 
+## TestFlight и App Store
+
+Пошаговая инструкция для заказчика по загрузке сборок и публикации: [TESTFLIGHT_APPSTORE.md](./TESTFLIGHT_APPSTORE.md).
+
 ## Репозиторий
 
 Публичный адрес проекта: [https://github.com/Pavel1970-code/SwiftUIApp](https://github.com/Pavel1970-code/SwiftUIApp)
