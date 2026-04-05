@@ -9,15 +9,15 @@ struct DonationsAmountSheet: View {
         NavigationStack {
             VStack(spacing: 26) {
                 Text(amountText)
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
+                    .font(KindeksFont.medium(44))
                     .foregroundStyle(.white)
 
                 Slider(value: $amount, in: 1...50, step: 1)
-                    .tint(.white)
+                    .tint(KindeksPalette.sky)
 
                 Text("Mock amount selector")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .font(KindeksFont.regular(11))
+                    .foregroundStyle(.white.opacity(0.65))
 
                 Button("Confirm") {
                     appState.selectedGiftId = nil
@@ -25,13 +25,13 @@ struct DonationsAmountSheet: View {
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.white.opacity(0.85))
+                .tint(.white.opacity(0.88))
                 .foregroundStyle(.black)
 
                 Spacer()
             }
             .padding(24)
-            .background(Color.black)
+            .background(KindeksPalette.background)
             .navigationTitle("Choose your sum")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -42,6 +42,7 @@ struct DonationsAmountSheet: View {
         .onAppear {
             amount = Double(appState.selectedDonationAmount ?? 1)
         }
+        .toolbarBackground(KindeksPalette.background, for: .navigationBar)
         .preferredColorScheme(.dark)
     }
 

@@ -5,6 +5,9 @@ struct ReceiverPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
 
+    /// Same dashboard UI with “{Name}’s Kindeks”; `nil` hides the swipe action.
+    var onViewPeerKindeks: ((Receiver) -> Void)? = nil
+
     var body: some View {
         NavigationStack {
             List(appState.receivers) { receiver in
@@ -25,15 +28,27 @@ struct ReceiverPickerSheet: View {
                     .padding(.vertical, 4)
                 }
                 .listRowBackground(Color.clear)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    if let onViewPeerKindeks {
+                        Button {
+                            onViewPeerKindeks(receiver)
+                            dismiss()
+                        } label: {
+                            Text("Kindeks")
+                        }
+                        .tint(Color(red: 0.42, green: 0.35, blue: 0.75))
+                    }
+                }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.black)
+            .background(KindeksPalette.background)
             .navigationTitle("Choose receiver")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close") { dismiss() }
                 }
             }
+            .toolbarBackground(KindeksPalette.background, for: .navigationBar)
         }
         .onAppear {
             appState.startBLEScanning()

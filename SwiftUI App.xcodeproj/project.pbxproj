@@ -17,6 +17,9 @@
 		A1B2C3D4E5F60718293A4B08 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */; };
 		A1B2C3D4E5F60718293A4B09 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C09 /* Models.swift */; };
 		A1B2C3D4E5F60718293A4B10 /* AuraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C10 /* AuraView.swift */; };
+		A1B2C3D4E5F60718293A4B11 /* KindeksDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C11 /* KindeksDesignSystem.swift */; };
+		A1B2C3D4E5F60718293A4B12 /* KindeksTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C12 /* KindeksTile.swift */; };
+		A1B2C3D4E5F60718293A4B13 /* KindeksDashboardContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4C13 /* KindeksDashboardContext.swift */; };
 		F54DA8472F7786DD00864086 /* Algorithms in Frameworks */ = {isa = PBXBuildFile; productRef = F54DA8462F7786DD00864086 /* Algorithms */; };
 		F56F712D2F760FDB00433536 /* SwiftUI_AppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */; };
 		F56F712F2F760FDB00433536 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712E2F760FDB00433536 /* ContentView.swift */; };
@@ -57,6 +60,9 @@
 		A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4C09 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4C10 /* AuraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C11 /* KindeksDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindeksDesignSystem.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C12 /* KindeksTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindeksTile.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4C13 /* KindeksDashboardContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KindeksDashboardContext.swift; sourceTree = "<group>"; };
 		F56F71292F760FDB00433536 /* SwiftUI App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SwiftUI App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_AppApp.swift; sourceTree = "<group>"; };
 		F56F712E2F760FDB00433536 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -132,6 +138,9 @@
 				A1B2C3D4E5F60718293A4C08 /* SettingsView.swift */,
 				A1B2C3D4E5F60718293A4C09 /* Models.swift */,
 				A1B2C3D4E5F60718293A4C10 /* AuraView.swift */,
+				A1B2C3D4E5F60718293A4C11 /* KindeksDesignSystem.swift */,
+				A1B2C3D4E5F60718293A4C12 /* KindeksTile.swift */,
+				A1B2C3D4E5F60718293A4C13 /* KindeksDashboardContext.swift */,
 				F56F71302F760FDF00433536 /* Assets.xcassets */,
 				F56F71352F760FDF00433536 /* Persistence.swift */,
 				F56F71372F760FDF00433536 /* SwiftUI_App.xcdatamodeld */,
@@ -303,6 +312,9 @@
 			files = (
 				A1B2C3D4E5F60718293A4B09 /* Models.swift in Sources */,
 				A1B2C3D4E5F60718293A4B10 /* AuraView.swift in Sources */,
+				A1B2C3D4E5F60718293A4B11 /* KindeksDesignSystem.swift in Sources */,
+				A1B2C3D4E5F60718293A4B12 /* KindeksTile.swift in Sources */,
+				A1B2C3D4E5F60718293A4B13 /* KindeksDashboardContext.swift in Sources */,
 				A1B2C3D4E5F60718293A4B08 /* SettingsView.swift in Sources */,
 				A1B2C3D4E5F60718293A4B07 /* PartnersView.swift in Sources */,
 				A1B2C3D4E5F60718293A4B06 /* HistoryView.swift in Sources */,
@@ -480,11 +492,12 @@
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftUI App/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Used to discover nearby users and exchange donation events via Bluetooth.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Used to let you pick a local avatar photo for your profile.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Used to discover nearby users and exchange donation events via Bluetooth.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Used to let you pick a local avatar photo for your profile.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -510,11 +523,12 @@
 				DEVELOPMENT_ASSET_PATHS = "\"SwiftUI App/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Used to discover nearby users and exchange donation events via Bluetooth.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Used to let you pick a local avatar photo for your profile.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Used to discover nearby users and exchange donation events via Bluetooth.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Used to let you pick a local avatar photo for your profile.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (

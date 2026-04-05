@@ -5,15 +5,32 @@ import UIKit
 struct ContentView: View {
     @StateObject private var appState = AppState()
     @StateObject private var profileStore = LocalProfileStore()
+    @State private var kindeksPath = NavigationPath()
 
     var body: some View {
         Group {
             if profileStore.profile == nil {
                 ProfileOnboardingView(profileStore: profileStore)
             } else {
-                NavigationStack {
-                    DashboardView(profileAvatarData: profileStore.profile?.avatarData)
+                NavigationStack(path: $kindeksPath) {
+                    DashboardView(
+                        context: .own,
+                        profileAvatarData: profileStore.profile?.avatarData,
+                        onViewPeerKindeks: { receiver in
+                            kindeksPath.append(PeerKindeksDestination(receiver: receiver))
+                        }
+                    )
+                    .environmentObject(appState)
+                    .navigationDestination(for: PeerKindeksDestination.self) { dest in
+                        DashboardView(
+                            context: .peer(displayName: dest.displayName, avatarData: dest.avatarData),
+                            profileAvatarData: dest.avatarData,
+                            onViewPeerKindeks: { receiver in
+                                kindeksPath.append(PeerKindeksDestination(receiver: receiver))
+                            }
+                        )
                         .environmentObject(appState)
+                    }
                 }
             }
         }
@@ -81,24 +98,15 @@ private struct ProfileOnboardingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.06, green: 0.07, blue: 0.11),
-                    Color(red: 0.09, green: 0.05, blue: 0.14),
-                    Color(red: 0.03, green: 0.03, blue: 0.05)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            KindeksScreenBackground()
 
             VStack(spacing: 20) {
                 Text("Create your local profile")
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .font(KindeksFont.medium(28))
                     .foregroundStyle(.white)
 
                 Text("Stored only on this phone. No registration required.")
-                    .font(.subheadline)
+                    .font(KindeksFont.regular(14))
                     .foregroundStyle(.white.opacity(0.72))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
@@ -117,9 +125,9 @@ private struct ProfileOnboardingView: View {
                     .padding(.horizontal, 14)
                     .frame(height: 48)
                     .background(.white.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.fieldCornerRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: KindeksLayout.fieldCornerRadius, style: .continuous)
                             .stroke(Color.white.opacity(0.2), lineWidth: 1)
                     )
                     .foregroundStyle(.white)

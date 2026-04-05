@@ -5,49 +5,83 @@ struct AuraView: View {
 
     var body: some View {
         List {
-            Section("History") {
+            Section {
                 if appState.history.isEmpty {
                     Text("No activity yet")
-                        .foregroundStyle(.secondary)
+                        .font(KindeksFont.regular(14))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .listRowBackground(KindeksAuraRowBackground())
                 } else {
                     ForEach(sortedEvents) { event in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(eventTitle(event))
-                                .font(.headline)
+                                .font(KindeksFont.medium(16))
+                                .foregroundStyle(.white)
                             if let receiverLabel = event.receiverLabel {
                                 Text(receiverLabel)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .font(KindeksFont.regular(13))
+                                    .foregroundStyle(.white.opacity(0.62))
                             }
                             if let amount = event.amount, event.type == .donation {
                                 Text("$\(amount)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .font(KindeksFont.regular(13))
+                                    .foregroundStyle(.white.opacity(0.62))
                             }
                             Text(event.timestamp, format: .dateTime.hour().minute())
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(KindeksFont.regular(11))
+                                .foregroundStyle(.white.opacity(0.45))
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 6)
+                        .listRowBackground(KindeksAuraRowBackground())
                     }
                 }
+            } header: {
+                sectionHeader("History")
             }
 
-            Section("Partners") {
+            Section {
                 Text("Partners placeholder")
-                    .foregroundStyle(.secondary)
+                    .font(KindeksFont.regular(14))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .listRowBackground(KindeksAuraRowBackground())
+            } header: {
+                sectionHeader("Partners")
             }
 
-            Section("Silence") {
+            Section {
                 Toggle("Silence mode", isOn: $appState.silenceMode)
+                    .font(KindeksFont.regular(15))
+                    .foregroundStyle(.white)
+                    .tint(KindeksPalette.mint)
+                    .listRowBackground(KindeksAuraRowBackground())
+            } header: {
+                sectionHeader("Silence")
             }
 
-            Section("Widget") {
+            Section {
                 Text("Widget placeholder")
-                    .foregroundStyle(.secondary)
+                    .font(KindeksFont.regular(14))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .listRowBackground(KindeksAuraRowBackground())
+            } header: {
+                sectionHeader("Widget")
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(KindeksPalette.background)
         .navigationTitle("Your Aura")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbarBackground(KindeksPalette.background, for: .navigationBar)
+        .preferredColorScheme(.dark)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(KindeksFont.regular(11))
+            .foregroundStyle(.white.opacity(0.48))
+            .textCase(.uppercase)
+            .padding(.top, 8)
     }
 
     private var sortedEvents: [HistoryEvent] {
@@ -65,5 +99,12 @@ struct AuraView: View {
         case (.donation, .received):
             return "Received Donation"
         }
+    }
+}
+
+private struct KindeksAuraRowBackground: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: KindeksLayout.fieldCornerRadius, style: .continuous)
+            .fill(Color.white.opacity(0.07))
     }
 }

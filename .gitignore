@@ -1,6 +1,10 @@
 # Xcode / SwiftUI
 DerivedData/
 DerivedDataSim/
+.DerivedData/
+.DerivedDataSim/
+.DerivedDataBuild/
+.build_sim/
 
 # User settings/state
 **/xcuserdata/
