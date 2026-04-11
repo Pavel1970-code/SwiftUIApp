@@ -7,9 +7,11 @@
 ## 0. Что понадобится
 
 - **Apple Developer Program** — [developer.apple.com/programs](https://developer.apple.com/programs/) (**99 USD/год**). Без неё нельзя опубликовать приложение в App Store и нельзя приглашать **внешних** тестеров в TestFlight (внутренние тестеры из команды — тоже только с активной программой).
-- **Mac** с установленным **Xcode** (актуальная версия, с поддержкой вашей версии iOS в проекте).
+- **Mac** с установленным **Xcode 16 или новее** (в комплекте **iOS 18 SDK**). Apple **не примет** загрузку в App Store Connect, если архив собран старым Xcode (например, только с iOS 17.2 SDK). Проверка: **Xcode → About Xcode**. Скачать: App Store или [Apple Developer Downloads](https://developer.apple.com/download/all/).
 - **Apple ID**, на который оформлена программа, добавлен в **Xcode → Settings (⌘,) → Accounts**.
 - Исходный код проекта уже открывается и собирается локально (см. [CLIENT_SETUP.md](./CLIENT_SETUP.md)).
+
+Проект **Kindeks** в настройках таргета указан как **только iPhone** (не универсальное iPhone+iPad-приложение), чтобы для App Store не требовались отдельные иконки под iPad.
 
 ---
 
@@ -21,7 +23,7 @@
    - **Platforms:** iOS  
    - **Name** — название в магазине (например, Kindeks)  
    - **Primary language**  
-   - **Bundle ID** — **должен совпадать** с идентификатором в Xcode (**Signing & Capabilities** у таргета *SwiftUI App*). Сейчас в проекте указан идентификатор вида `toprete.com.SwiftUI-App`; при смене в Xcode тот же ID нужно зарегистрировать в Apple и выбрать здесь.
+   - **Bundle ID** — **должен совпадать** с идентификатором в Xcode (**Signing & Capabilities** у таргета *SwiftUI App*). В актуальной версии проекта используется **`toprete.com.kindeks`**; при смене в Xcode тот же ID нужно зарегистрировать в Apple и выбрать здесь.
 4. Если нужного **Bundle ID** нет в списке: [developer.apple.com](https://developer.apple.com) → **Account** → **Certificates, Identifiers & Profiles** → **Identifiers** → **+** → **App IDs** → зарегистрируйте App ID с **точно таким же** Bundle ID, как в Xcode.
 5. **SKU** — любой внутренний уникальный код (например `kindeks-ios-1`), покупателям не показывается.
 6. Сохраните приложение — в списке появится новая запись.
