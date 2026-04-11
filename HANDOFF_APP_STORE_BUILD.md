@@ -46,6 +46,8 @@
 
 ## Часть C. Клонирование и открытие проекта
 
+Как упаковать проект на стороне разработчика (Git vs ZIP без мусора): [EXPORT_TO_OTHER_MAC.md](./EXPORT_TO_OTHER_MAC.md).
+
 ```bash
 git clone https://github.com/Pavel1970-code/SwiftUIApp.git
 cd SwiftUIApp
