@@ -23,13 +23,18 @@ struct ContentView: View {
                     .environmentObject(appState)
                     .navigationDestination(for: PeerKindeksDestination.self) { dest in
                         DashboardView(
-                            context: .peer(displayName: dest.displayName, avatarData: dest.avatarData),
+                            context: .peer(id: dest.id, displayName: dest.displayName, avatarData: dest.avatarData),
                             profileAvatarData: dest.avatarData,
                             onViewPeerKindeks: { receiver in
                                 kindeksPath.append(PeerKindeksDestination(receiver: receiver))
                             }
                         )
                         .environmentObject(appState)
+                        .onAppear {
+                            if let match = appState.receivers.first(where: { $0.id == dest.id }) {
+                                appState.selectedReceiver = match
+                            }
+                        }
                     }
                 }
             }

@@ -102,6 +102,9 @@ final class AppState: ObservableObject {
     @Published var nearbyState: NearbyState = .idle
     @Published var selectedReceiver: Receiver?
     @Published var selectedGiftId: UInt8?
+    /// Picked donation goal (USD amount is always sent over BLE as money; goal is UX + local history context).
+    @Published var selectedDonationGoalId: UUID?
+    @Published private(set) var ownDonationGoals: [DonationGoal] = []
     @Published var pendingInvite: BLEInvite?
     @Published var silenceMode = false
     @Published var history: [HistoryEvent] = []
@@ -126,6 +129,7 @@ final class AppState: ObservableObject {
     private var nextOutgoingAllowedAt: Date = .distantPast
 
     init() {
+        ownDonationGoals = DonationGoalsLocalStore.loadOwn()
         ble.onScanPeersChanged = { [weak self] peripherals in
             self?.updateNearbyReceivers(from: peripherals)
         }
@@ -179,9 +183,29 @@ final class AppState: ObservableObject {
 
     func cancelDonation() {
         selectedGiftId = nil
+        selectedDonationGoalId = nil
         selectedDonationAmount = nil
-        selectedReceiver = nil
-        pendingInvite = nil
+    }
+
+    func addOwnDonationGoal(title: String, subtitle: String, imageData: Data?) -> Bool {
+        guard ownDonationGoals.count < DonationGoalsLocalStore.maxGoalsPerAccount else { return false }
+        let goal = DonationGoal(id: UUID(), title: title, subtitle: subtitle, imageData: imageData)
+        ownDonationGoals.append(goal)
+        DonationGoalsLocalStore.saveOwn(ownDonationGoals)
+        return true
+    }
+
+    /// Goals shown in the donations carousel for the current dashboard and draft state.
+    func donationGoalsForCarousel(context: KindeksDashboardContext) -> [DonationGoal] {
+        switch context {
+        case .own:
+            if let receiver = selectedReceiver {
+                return DonationGoalsLocalStore.loadOrSeedPeerGoals(peerId: receiver.id)
+            }
+            return ownDonationGoals
+        case .peer(let peerId, _, _):
+            return DonationGoalsLocalStore.loadOrSeedPeerGoals(peerId: peerId)
+        }
     }
 
     private func handleAcceptingChanged() {
@@ -197,6 +221,9 @@ final class AppState: ObservableObject {
         nearbyState = .searching
         pendingInvite = nil
         selectedReceiver = nil
+        selectedDonationGoalId = nil
+        selectedDonationAmount = nil
+        selectedGiftId = nil
         nextOutgoingAllowedAt = .distantPast
         ble.setReceiverAccepting(true)
         ble.startScanning()
@@ -212,6 +239,9 @@ final class AppState: ObservableObject {
         nearbyState = .idle
         selectedReceiver = nil
         pendingInvite = nil
+        selectedDonationGoalId = nil
+        selectedDonationAmount = nil
+        selectedGiftId = nil
         ble.setReceiverAccepting(false)
         ble.stopScanning()
     }
@@ -317,18 +347,11 @@ final class AppState: ObservableObject {
     func sendDonationOverBLE() async -> Bool {
         guard canStartOutgoingAction() else { return false }
         guard let receiver = selectedReceiver else { return false }
+        guard selectedDonationGoalId != nil else { return false }
+        guard let amount = selectedDonationAmount else { return false }
 
-        let eventKind: BLEInviteEventKind
-        let value: UInt16
-        if let giftId = selectedGiftId {
-            eventKind = .gift
-            value = UInt16(giftId)
-        } else if let amount = selectedDonationAmount {
-            eventKind = .money
-            value = UInt16(amount * 100) // cents
-        } else {
-            return false
-        }
+        let eventKind: BLEInviteEventKind = .money
+        let value = UInt16(amount * 100) // cents; $1 == 100¢ USD
 
         guard let peripheral = peripheralForReceiverId[receiver.id] else { return false }
 
@@ -349,7 +372,7 @@ final class AppState: ObservableObject {
                 direction: .sent,
                 receiverId: receiver.id,
                 receiverLabel: receiver.name,
-                amount: selectedGiftId == nil ? selectedDonationAmount : nil,
+                amount: selectedDonationAmount,
                 timestamp: Date()
             ),
             at: 0
@@ -359,6 +382,7 @@ final class AppState: ObservableObject {
         selectedReceiver = nil
         selectedDonationAmount = nil
         selectedGiftId = nil
+        selectedDonationGoalId = nil
         nearbyState = .idle
         registerActionCooldown()
         if eventKind == .money {

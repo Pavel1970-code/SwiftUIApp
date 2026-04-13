@@ -15,12 +15,12 @@ struct DonationsAmountSheet: View {
                 Slider(value: $amount, in: 1...50, step: 1)
                     .tint(KindeksPalette.sky)
 
-                Text("Mock amount selector")
+                Text("$1 on the slider is one US dollar.")
                     .font(KindeksFont.regular(11))
                     .foregroundStyle(.white.opacity(0.65))
+                    .multilineTextAlignment(.center)
 
                 Button("Confirm") {
-                    appState.selectedGiftId = nil
                     appState.selectedDonationAmount = Int(amount)
                     dismiss()
                 }

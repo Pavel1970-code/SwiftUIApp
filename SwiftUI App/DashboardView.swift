@@ -13,9 +13,15 @@ struct DashboardView: View {
     @State private var showReceiverSheet = false
     @State private var showAmountSheet = false
     @State private var showDailySheet = false
+    @State private var showAddGoalSheet = false
     @State private var showSuccess = false
     @State private var showNearbyHint = false
     @State private var nearbyHintText = ""
+    @State private var showCancelDonationConfirm = false
+    @State private var showDonationSentAlert = false
+    @State private var donationErrorText: String?
+    @State private var showPartnerStubAlert = false
+    @State private var showDonationClearedAlert = false
 
     private let columns: [GridItem] = [
         GridItem(.fixed(KindeksLayout.tileWidth), spacing: KindeksLayout.gutter),
@@ -31,11 +37,15 @@ struct DashboardView: View {
                     Text(kindeksHeadline)
                         .font(KindeksFont.medium(28))
                         .foregroundStyle(Color.white)
+                    if appState.selectedTab == .donations {
+                        donationsRecipientRow
+                        donationsGoalsCarousel
+                    }
                     LazyVGrid(columns: columns, spacing: KindeksLayout.gutter) {
                         if appState.selectedTab == .thanks {
                             thanksTiles
                         } else {
-                            donationsTiles
+                            donationsAmountTiles
                         }
                     }
                 }
@@ -62,8 +72,12 @@ struct DashboardView: View {
             DonationsAmountSheet()
                 .environmentObject(appState)
         }
-        .sheet(isPresented: $showDailySheet) {
+        .fullScreenCover(isPresented: $showDailySheet) {
             DailyPlaceholderSheet()
+        }
+        .sheet(isPresented: $showAddGoalSheet) {
+            AddDonationGoalSheet()
+                .environmentObject(appState)
         }
         .navigationBarBackButtonHidden(true)
         .navigationDestination(for: DashboardRoute.self) { route in
@@ -76,15 +90,177 @@ struct DashboardView: View {
                     .environmentObject(appState)
             }
         }
+        .onChange(of: appState.selectedReceiver?.id) { _, _ in
+            appState.selectedDonationGoalId = nil
+        }
+        .alert("Cancel donation?", isPresented: $showCancelDonationConfirm) {
+            Button("Keep editing", role: .cancel) {}
+            Button("Clear goal & amount", role: .destructive) {
+                appState.cancelDonation()
+                showDonationClearedAlert = true
+            }
+        } message: {
+            Text("Your chosen goal and amount will be cleared. The recipient stays selected.")
+        }
+        .alert("Donation sent", isPresented: $showDonationSentAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your amount was sent in USD ($1 equals $1).")
+        }
+        .alert("Could not send", isPresented: Binding(
+            get: { donationErrorText != nil },
+            set: { if !$0 { donationErrorText = nil } }
+        )) {
+            Button("OK", role: .cancel) { donationErrorText = nil }
+        } message: {
+            Text(donationErrorText ?? "")
+        }
+        .alert("Partner goals", isPresented: $showPartnerStubAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Partner-suggested goals will show up here when available.")
+        }
+        .alert("Cancelled", isPresented: $showDonationClearedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Goal and amount were cleared.")
+        }
     }
 
     private var kindeksHeadline: String {
         switch context {
         case .own:
             return "My Kindeks"
-        case .peer(let name, _):
+        case .peer(_, let name, _):
             let t = name.trimmingCharacters(in: .whitespacesAndNewlines)
             return t.isEmpty ? "Kindeks" : "\(t)'s Kindeks"
+        }
+    }
+
+    private var donationsRecipientRow: some View {
+        Button {
+            showReceiverSheet = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.white.opacity(0.9))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Recipient")
+                        .font(KindeksFont.regular(11))
+                        .foregroundStyle(Color.white.opacity(0.65))
+                    if let r = appState.selectedReceiver {
+                        Text(r.name)
+                            .font(KindeksFont.medium(16))
+                            .foregroundStyle(Color.white)
+                    } else {
+                        Text("Choose who receives the donation")
+                            .font(KindeksFont.medium(15))
+                            .foregroundStyle(Color.white.opacity(0.82))
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.5))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial.opacity(0.38))
+            .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.fieldCornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: KindeksLayout.fieldCornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
+            )
+        }
+        .buttonStyle(KindeksPlainHeaderButtonStyle())
+    }
+
+    private var donationsGoalsCarousel: some View {
+        let items = donationCarouselItems()
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(carouselCaption)
+                .font(KindeksFont.regular(11))
+                .foregroundStyle(Color.white.opacity(0.68))
+            TabView {
+                ForEach(items) { item in
+                    donationCarouselPage(item)
+                        .padding(.horizontal, 2)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .automatic))
+            .frame(height: KindeksLayout.tileHeight)
+        }
+    }
+
+    private var carouselCaption: String {
+        switch context {
+        case .peer:
+            return "Swipe goals — pick one, then amount, then Send."
+        case .own:
+            if appState.selectedReceiver != nil {
+                return "Their goals for this donation (swipe for more)."
+            }
+            return "Your goals on this phone (up to \(DonationGoalsLocalStore.maxGoalsPerAccount)). Swipe for add / partner slots."
+        }
+    }
+
+    private func donationCarouselItems() -> [DonationCarouselItem] {
+        let goals = appState.donationGoalsForCarousel(context: context)
+        var items: [DonationCarouselItem] = goals.map { .goal($0) }
+        let canAdd: Bool = {
+            switch context {
+            case .peer:
+                return false
+            case .own:
+                return appState.selectedReceiver == nil && goals.count < DonationGoalsLocalStore.maxGoalsPerAccount
+            }
+        }()
+        if canAdd {
+            items.append(.addOwn)
+        }
+        items.append(.partnerStub(0))
+        items.append(.partnerStub(1))
+        return items
+    }
+
+    @ViewBuilder
+    private func donationCarouselPage(_ item: DonationCarouselItem) -> some View {
+        switch item {
+        case .goal(let goal):
+            Button {
+                appState.selectedDonationGoalId = goal.id
+            } label: {
+                DonationGoalCardContent(
+                    goal: goal,
+                    isSelected: appState.selectedDonationGoalId == goal.id
+                )
+            }
+            .buttonStyle(KindeksPlainHeaderButtonStyle())
+        case .addOwn:
+            Button {
+                showAddGoalSheet = true
+            } label: {
+                DonationPlaceholderCardContent(
+                    systemImage: "plus.circle.fill",
+                    title: "Add goal",
+                    subtitle: "Up to \(DonationGoalsLocalStore.maxGoalsPerAccount) on device",
+                    style: .frostedLight
+                )
+            }
+            .buttonStyle(KindeksPlainHeaderButtonStyle())
+        case .partnerStub(_):
+            Button {
+                showPartnerStubAlert = true
+            } label: {
+                DonationPlaceholderCardContent(
+                    systemImage: "hands.clap.fill",
+                    title: "Partner slot",
+                    subtitle: "Pick from sponsors or auto-suggestions",
+                    style: .donationMesh
+                )
+            }
+            .buttonStyle(KindeksPlainHeaderButtonStyle())
         }
     }
 
@@ -113,6 +289,11 @@ struct DashboardView: View {
 
         KindeksGlassTile(mesh: .starry, action: { showDailySheet = true }) {
             Color.clear
+                .overlay {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 28, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.35))
+                }
         }
 
         // Middle-left (under timer): nearby / active peers — порядок как в обновлённом прототипе Figma.
@@ -178,34 +359,20 @@ struct DashboardView: View {
             }
         })
 
-        KindeksGlassTile(mesh: .sessionOrange, action: nil) {
-            SessionEndsContent(
-                primaryText: sessionEndsDisplay,
-                showUnderline: appState.isAccepting && appState.sessionRemainingSeconds > 0
-            )
+        NavigationLink(value: DashboardRoute.nearbySession) {
+            KindeksGlassTile(mesh: .sessionOrange, action: nil) {
+                SessionEndsContent(
+                    primaryText: sessionEndsDisplay,
+                    showUnderline: appState.isAccepting && appState.sessionRemainingSeconds > 0
+                )
+            }
         }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder
-    private var donationsTiles: some View {
-        KindeksGlassTile(mesh: .frostedLight, action: {
-            appState.selectedGiftId = 0
-            appState.selectedDonationAmount = nil
-            showReceiverSheet = true
-        }) {
-            PlusCenterContent()
-        }
-
-        KindeksGlassTile(mesh: .frostedLight, action: {
-            appState.selectedGiftId = 1
-            appState.selectedDonationAmount = nil
-            showReceiverSheet = true
-        }) {
-            PlusCenterContent()
-        }
-
+    private var donationsAmountTiles: some View {
         KindeksGlassTile(mesh: .donationMesh, action: {
-            appState.selectedGiftId = nil
             appState.selectedDonationAmount = 1
         }) {
             Text("1$")
@@ -221,7 +388,7 @@ struct DashboardView: View {
                 .padding(.horizontal, 10)
         }
 
-        KindeksGlassTile(mesh: .cancelPurple, action: appState.cancelDonation) {
+        KindeksGlassTile(mesh: .cancelPurple, action: { showCancelDonationConfirm = true }) {
             CancelTileContent()
         }
 
@@ -248,8 +415,9 @@ struct DashboardView: View {
     }
 
     private var canSendDonation: Bool {
-        guard appState.selectedReceiver != nil else { return false }
-        return appState.selectedGiftId != nil || appState.selectedDonationAmount != nil
+        appState.selectedReceiver != nil
+            && appState.selectedDonationGoalId != nil
+            && appState.selectedDonationAmount != nil
     }
 
     private func handleDoubleTap() {
@@ -267,9 +435,9 @@ struct DashboardView: View {
         Task { @MainActor in
             let ok = await appState.sendDonationOverBLE()
             if ok {
-                showSuccessBurst()
+                showDonationSentAlert = true
             } else {
-                showHint("Could not deliver donation (timeout)")
+                donationErrorText = "Could not deliver donation (timeout or connection)."
             }
         }
     }
@@ -346,24 +514,6 @@ private struct KindeksPlainHeaderButtonStyle: ButtonStyle {
 private enum DashboardRoute: Hashable {
     case aura
     case nearbySession
-}
-
-private struct PlusCenterContent: View {
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(Color.white.opacity(0.94))
-                .frame(width: 56, height: 56)
-                .shadow(color: Color.black.opacity(0.14), radius: 5, x: 0, y: 3)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.55), lineWidth: 1)
-                )
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Color(white: 0.48))
-        }
-    }
 }
 
 private struct CancelTileContent: View {
@@ -877,14 +1027,22 @@ private struct DailyPlaceholderSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                KindeksScreenBackground()
-                VStack(spacing: 14) {
-                    Image(systemName: "sun.max.fill")
-                        .font(.system(size: 44))
-                        .foregroundStyle(KindeksPalette.orange.opacity(0.95))
-                    Text("Daily mode (coming soon)")
-                        .font(KindeksFont.medium(20))
+                KindeksMeshBackground(style: .starry)
+                    .ignoresSafeArea()
+                KindeksPalette.background.opacity(0.35)
+                    .ignoresSafeArea()
+                VStack(spacing: 18) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 52))
+                        .foregroundStyle(Color.white.opacity(0.9))
+                    Text("Starry thanks")
+                        .font(KindeksFont.medium(24))
                         .foregroundStyle(Color.white)
+                    Text("Fullscreen daily mode — coming soon.")
+                        .font(KindeksFont.regular(14))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -896,5 +1054,107 @@ private struct DailyPlaceholderSheet: View {
             .toolbarBackground(.clear, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+private enum DonationPlaceholderStyle {
+    case frostedLight
+    case donationMesh
+}
+
+private struct DonationGoalCardContent: View {
+    let goal: DonationGoal
+    let isSelected: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial.opacity(0.42))
+            Group {
+                if let data = goal.imageData, let ui = UIImage(data: data) {
+                    Image(uiImage: ui)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    KindeksMeshBackground(style: .donationMesh)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous))
+            .opacity(0.92)
+
+            LinearGradient(
+                colors: [.black.opacity(0.05), .black.opacity(0.55)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(goal.title)
+                    .font(KindeksFont.medium(20))
+                    .foregroundStyle(Color.white)
+                    .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
+                if !goal.subtitle.isEmpty {
+                    Text(goal.subtitle)
+                        .font(KindeksFont.regular(13))
+                        .foregroundStyle(Color.white.opacity(0.88))
+                        .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(
+            RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous)
+                .stroke(isSelected ? KindeksPalette.mint : Color.white.opacity(0.2), lineWidth: isSelected ? 2.5 : 1)
+        )
+    }
+}
+
+private struct DonationPlaceholderCardContent: View {
+    let systemImage: String
+    let title: String
+    let subtitle: String
+    let style: DonationPlaceholderStyle
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous)
+                .fill(.ultraThinMaterial.opacity(0.35))
+            Group {
+                switch style {
+                case .frostedLight:
+                    KindeksMeshBackground(style: .frostedLight)
+                case .donationMesh:
+                    KindeksMeshBackground(style: .donationMesh)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous))
+            .opacity(0.88)
+
+            VStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 36, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                Text(title)
+                    .font(KindeksFont.medium(18))
+                    .foregroundStyle(Color.white)
+                Text(subtitle)
+                    .font(KindeksFont.regular(12))
+                    .foregroundStyle(Color.white.opacity(0.78))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+            }
+            .padding(12)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(
+            RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.22), lineWidth: 1)
+        )
     }
 }
