@@ -54,6 +54,8 @@ struct HistoryEvent: Identifiable {
     let receiverLabel: String?
     let amount: Int?
     let timestamp: Date
+    /// Set for sent donations when a goal was chosen (local history only).
+    let donationGoalId: UUID?
 }
 
 struct BLELocalProfile {
@@ -101,6 +103,8 @@ final class AppState: ObservableObject {
     @Published var sessionRemainingSeconds = 0
     @Published var nearbyState: NearbyState = .idle
     @Published var selectedReceiver: Receiver?
+    /// BLE donation target while viewing a peer’s Kindeks (implicit recipient; not used on `.own`).
+    @Published var donationRecipient: Receiver?
     @Published var selectedGiftId: UInt8?
     /// Picked donation goal (USD amount is always sent over BLE as money; goal is UX + local history context).
     @Published var selectedDonationGoalId: UUID?
@@ -108,6 +112,9 @@ final class AppState: ObservableObject {
     @Published var pendingInvite: BLEInvite?
     @Published var silenceMode = false
     @Published var history: [HistoryEvent] = []
+
+    /// Скрытая аура: только визуал и текст, без чисел в UI.
+    @Published private(set) var auraVisualState: AuraVisualState = .initial
 
     @Published var receivers: [Receiver] = []
 
@@ -128,13 +135,24 @@ final class AppState: ObservableObject {
     private let actionCooldownSeconds: TimeInterval = 15
     private var nextOutgoingAllowedAt: Date = .distantPast
 
+    private var auraLedgerEntries: [AuraLedgerEntry] = []
+
     init() {
         ownDonationGoals = DonationGoalsLocalStore.loadOwn()
+        auraLedgerEntries = AuraPersistence.loadLedger()
+        auraVisualState = AuraEngine.visualState(from: auraLedgerEntries)
         ble.onScanPeersChanged = { [weak self] peripherals in
             self?.updateNearbyReceivers(from: peripherals)
         }
-        ble.onInviteReceived = { [weak self] invite in
-            self?.handleInviteReceived(invite)
+        ble.onInviteReceived = { [weak self] centralId, invite in
+            Task { @MainActor in
+                self?.handleInviteReceived(from: centralId, invite: invite)
+            }
+        }
+        ble.onThanksAckFromPeer = { [weak self] peerId in
+            Task { @MainActor in
+                self?.recordAuraInteraction(kind: .thanksReceived, peerId: peerId)
+            }
         }
         ble.onProfileReceived = { [weak self] peripheralId, nickname, avatarData in
             self?.handlePeerProfile(
@@ -146,6 +164,22 @@ final class AppState: ObservableObject {
         ble.profileProvider = {
             LocalProfileBridge.load()
         }
+    }
+
+    private func recordAuraInteraction(
+        kind: AuraInteractionKind,
+        peerId: UUID?,
+        flags: AuraContextFlags = AuraContextFlags()
+    ) {
+        let entry = AuraEngine.makeEntry(
+            existingLedger: auraLedgerEntries,
+            kind: kind,
+            peerId: peerId,
+            flags: flags
+        )
+        auraLedgerEntries.append(entry)
+        AuraPersistence.saveLedger(auraLedgerEntries)
+        auraVisualState = AuraEngine.visualState(from: auraLedgerEntries)
     }
 
     func toggleAccepting() {
@@ -167,10 +201,13 @@ final class AppState: ObservableObject {
                 receiverId: receiver?.id,
                 receiverLabel: receiver?.name,
                 amount: nil,
-                timestamp: Date()
+                timestamp: Date(),
+                donationGoalId: nil
             ),
             at: 0
         )
+
+        recordAuraInteraction(kind: .thanksSent, peerId: receiver?.id)
 
         pendingInvite = nil
         selectedReceiver = nil
@@ -195,17 +232,32 @@ final class AppState: ObservableObject {
         return true
     }
 
-    /// Goals shown in the donations carousel for the current dashboard and draft state.
+    /// Goals shown in the donations carousel: own goals on My Kindeks; peer’s goals only in peer context.
     func donationGoalsForCarousel(context: KindeksDashboardContext) -> [DonationGoal] {
         switch context {
         case .own:
-            if let receiver = selectedReceiver {
-                return DonationGoalsLocalStore.loadOrSeedPeerGoals(peerId: receiver.id)
-            }
             return ownDonationGoals
         case .peer(let peerId, _, _):
             return DonationGoalsLocalStore.loadOrSeedPeerGoals(peerId: peerId)
         }
+    }
+
+    func syncDonationRecipient(with dest: PeerKindeksDestination) {
+        if let match = receivers.first(where: { $0.id == dest.id }) {
+            donationRecipient = match
+        } else {
+            let name = dest.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            donationRecipient = Receiver(
+                id: dest.id,
+                name: name.isEmpty ? "Peer" : name,
+                icon: "circle.hexagongrid.fill",
+                avatarData: dest.avatarData
+            )
+        }
+    }
+
+    func clearDonationRecipient() {
+        donationRecipient = nil
     }
 
     private func handleAcceptingChanged() {
@@ -221,8 +273,6 @@ final class AppState: ObservableObject {
         nearbyState = .searching
         pendingInvite = nil
         selectedReceiver = nil
-        selectedDonationGoalId = nil
-        selectedDonationAmount = nil
         selectedGiftId = nil
         nextOutgoingAllowedAt = .distantPast
         ble.setReceiverAccepting(true)
@@ -239,9 +289,6 @@ final class AppState: ObservableObject {
         nearbyState = .idle
         selectedReceiver = nil
         pendingInvite = nil
-        selectedDonationGoalId = nil
-        selectedDonationAmount = nil
-        selectedGiftId = nil
         ble.setReceiverAccepting(false)
         ble.stopScanning()
     }
@@ -296,6 +343,12 @@ final class AppState: ObservableObject {
         return Date() >= nextOutgoingAllowedAt
     }
 
+    /// Outgoing BLE donation: does not require `isAccepting` (donor vs receiver session).
+    private func canStartOutgoingDonation() -> Bool {
+        guard pendingInvite == nil else { return false }
+        return Date() >= nextOutgoingAllowedAt
+    }
+
     private func registerActionCooldown() {
         nextOutgoingAllowedAt = Date().addingTimeInterval(actionCooldownSeconds)
     }
@@ -316,18 +369,20 @@ final class AppState: ObservableObject {
         nearbyState = receivers.isEmpty ? .searching : .found
     }
 
-    private func handleInviteReceived(_ invite: BLEInvite) {
+    private func handleInviteReceived(from centralId: UUID, invite: BLEInvite) {
         pendingInvite = invite
         nearbyState = .found
         registerActionCooldown()
 
-        // MVP: on receiver we don't know which peer label (we just display a generic "Nearby #1").
+        // Receiver knows BLE central id — используем как стабильный peer id для ауры и выбора.
         selectedReceiver = Receiver(
-            id: UUID(),
+            id: centralId,
             name: "Nearby #1",
             icon: "circle.hexagongrid.fill",
             avatarData: nil
         )
+
+        recordAuraInteraction(kind: .donationReceived, peerId: centralId)
     }
 
     private func handlePeerProfile(peripheralId: UUID, nickname: String, avatarData: Data?) {
@@ -345,9 +400,9 @@ final class AppState: ObservableObject {
 
     // MARK: - Donor send over BLE
     func sendDonationOverBLE() async -> Bool {
-        guard canStartOutgoingAction() else { return false }
-        guard let receiver = selectedReceiver else { return false }
-        guard selectedDonationGoalId != nil else { return false }
+        guard canStartOutgoingDonation() else { return false }
+        guard let receiver = donationRecipient else { return false }
+        guard let goalId = selectedDonationGoalId else { return false }
         guard let amount = selectedDonationAmount else { return false }
 
         let eventKind: BLEInviteEventKind = .money
@@ -373,20 +428,21 @@ final class AppState: ObservableObject {
                 receiverId: receiver.id,
                 receiverLabel: receiver.name,
                 amount: selectedDonationAmount,
-                timestamp: Date()
+                timestamp: Date(),
+                donationGoalId: goalId
             ),
             at: 0
         )
 
-        // Session ends (MVP): clear draft and close selection.
-        selectedReceiver = nil
+        recordAuraInteraction(kind: .donationSent, peerId: receiver.id)
+
         selectedDonationAmount = nil
         selectedGiftId = nil
         selectedDonationGoalId = nil
         nearbyState = .idle
         registerActionCooldown()
         if eventKind == .money {
-            statsStore.trackDonation(amountCents: Int(value))
+            statsStore.trackDonation(amountCents: Int(value), isTargeted: true)
         }
 
         return true
@@ -412,7 +468,9 @@ final class FirebaseStatsStore {
         #endif
     }
 
-    func trackDonation(amountCents: Int) {
+    /// Global counters in `stats/global`. Existing fields keep aggregate amounts by denomination;
+    /// `isTargeted` splits counts and cent totals into целевой vs простой донат.
+    func trackDonation(amountCents: Int, isTargeted: Bool) {
         guard amountCents > 0 else { return }
         #if canImport(FirebaseFirestore)
         var payload: [String: Any] = [
@@ -423,6 +481,13 @@ final class FirebaseStatsStore {
         } else {
             payload["donation_custom_total"] = FieldValue.increment(Int64(1))
             payload["donation_amount_cents_total"] = FieldValue.increment(Int64(amountCents))
+        }
+        if isTargeted {
+            payload["donation_targeted_total"] = FieldValue.increment(Int64(1))
+            payload["donation_targeted_cents_total"] = FieldValue.increment(Int64(amountCents))
+        } else {
+            payload["donation_simple_total"] = FieldValue.increment(Int64(1))
+            payload["donation_simple_cents_total"] = FieldValue.increment(Int64(amountCents))
         }
         Firestore.firestore()
             .collection("stats")
@@ -472,7 +537,10 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
     private var receiverServiceAdded = false
     private var shouldStartAdvertisingAfterAddService = false
 
-    var onInviteReceived: ((BLEInvite) -> Void)?
+    /// Централь, с которой пришёл инвайт (стабильный UUID для peer id).
+    var onInviteReceived: ((UUID, BLEInvite) -> Void)?
+    /// Донор получил THANKS по BLE — peer = периферия-донор видит `peripheral.identifier`.
+    var onThanksAckFromPeer: ((UUID) -> Void)?
 
     // MARK: - Donor state (connecting + waiting THANKS)
     private var pendingThanksHandlers: [UInt32: (Bool) -> Void] = [:]
@@ -811,6 +879,7 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
                 (UInt32(bytes[5]) << 24)
 
             if let handler = pendingThanksHandlers.removeValue(forKey: txId) {
+                onThanksAckFromPeer?(peripheral.identifier)
                 handler(true)
                 centralManager.cancelPeripheralConnection(peripheral)
                 stopConnectionState()
@@ -889,7 +958,7 @@ final class BLEGiftSessionManager: NSObject, CBCentralManagerDelegate, CBPeriphe
             }
 
             pendingInvite = invite
-            onInviteReceived?(invite)
+            onInviteReceived?(req.central.identifier, invite)
             peripheral.respond(to: req, withResult: .success)
         }
     }

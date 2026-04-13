@@ -10,7 +10,6 @@ struct DashboardView: View {
     /// Open a peer’s Kindeks (same grid) from the receiver list.
     var onViewPeerKindeks: ((Receiver) -> Void)? = nil
 
-    @State private var showReceiverSheet = false
     @State private var showAmountSheet = false
     @State private var showDailySheet = false
     @State private var showAddGoalSheet = false
@@ -20,8 +19,9 @@ struct DashboardView: View {
     @State private var showCancelDonationConfirm = false
     @State private var showDonationSentAlert = false
     @State private var donationErrorText: String?
-    @State private var showPartnerStubAlert = false
     @State private var showDonationClearedAlert = false
+    /// Page index for active vis-a-vis photo stack (Thanks, middle-left).
+    @State private var thanksPeerCarouselIndex = 0
 
     private let columns: [GridItem] = [
         GridItem(.fixed(KindeksLayout.tileWidth), spacing: KindeksLayout.gutter),
@@ -37,15 +37,16 @@ struct DashboardView: View {
                     Text(kindeksHeadline)
                         .font(KindeksFont.medium(28))
                         .foregroundStyle(Color.white)
-                    if appState.selectedTab == .donations {
-                        donationsRecipientRow
-                        donationsGoalsCarousel
-                    }
-                    LazyVGrid(columns: columns, spacing: KindeksLayout.gutter) {
-                        if appState.selectedTab == .thanks {
+                    if appState.selectedTab == .thanks {
+                        LazyVGrid(columns: columns, spacing: KindeksLayout.gutter) {
                             thanksTiles
-                        } else {
-                            donationsAmountTiles
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: KindeksLayout.gutter) {
+                            donationsGoalsRow
+                            LazyVGrid(columns: columns, spacing: KindeksLayout.gutter) {
+                                donationsAmountTiles
+                            }
                         }
                     }
                 }
@@ -63,10 +64,6 @@ struct DashboardView: View {
                         .padding(.bottom, 24)
                 }
             }
-        }
-        .sheet(isPresented: $showReceiverSheet) {
-            ReceiverPickerSheet(onViewPeerKindeks: onViewPeerKindeks)
-                .environmentObject(appState)
         }
         .sheet(isPresented: $showAmountSheet) {
             DonationsAmountSheet()
@@ -90,7 +87,7 @@ struct DashboardView: View {
                     .environmentObject(appState)
             }
         }
-        .onChange(of: appState.selectedReceiver?.id) { _, _ in
+        .onChange(of: appState.donationRecipient?.id) { _, _ in
             appState.selectedDonationGoalId = nil
         }
         .alert("Cancel donation?", isPresented: $showCancelDonationConfirm) {
@@ -100,7 +97,7 @@ struct DashboardView: View {
                 showDonationClearedAlert = true
             }
         } message: {
-            Text("Your chosen goal and amount will be cleared. The recipient stays selected.")
+            Text("Your chosen goal and amount will be cleared.")
         }
         .alert("Donation sent", isPresented: $showDonationSentAlert) {
             Button("OK", role: .cancel) {}
@@ -115,15 +112,17 @@ struct DashboardView: View {
         } message: {
             Text(donationErrorText ?? "")
         }
-        .alert("Partner goals", isPresented: $showPartnerStubAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Partner-suggested goals will show up here when available.")
-        }
         .alert("Cancelled", isPresented: $showDonationClearedAlert) {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Goal and amount were cleared.")
+        }
+        .onChange(of: appState.receivers.count) { _, newCount in
+            if newCount == 0 {
+                thanksPeerCarouselIndex = 0
+            } else if thanksPeerCarouselIndex >= newCount {
+                thanksPeerCarouselIndex = max(0, newCount - 1)
+            }
         }
     }
 
@@ -137,90 +136,37 @@ struct DashboardView: View {
         }
     }
 
-    private var donationsRecipientRow: some View {
-        Button {
-            showReceiverSheet = true
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 22))
-                    .foregroundStyle(Color.white.opacity(0.9))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Recipient")
-                        .font(KindeksFont.regular(11))
-                        .foregroundStyle(Color.white.opacity(0.65))
-                    if let r = appState.selectedReceiver {
-                        Text(r.name)
-                            .font(KindeksFont.medium(16))
-                            .foregroundStyle(Color.white)
-                    } else {
-                        Text("Choose who receives the donation")
-                            .font(KindeksFont.medium(15))
-                            .foregroundStyle(Color.white.opacity(0.82))
-                    }
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.5))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial.opacity(0.38))
-            .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.fieldCornerRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: KindeksLayout.fieldCornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
-            )
-        }
-        .buttonStyle(KindeksPlainHeaderButtonStyle())
-    }
-
-    private var donationsGoalsCarousel: some View {
+    private var donationsGoalsRow: some View {
         let items = donationCarouselItems()
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(carouselCaption)
-                .font(KindeksFont.regular(11))
-                .foregroundStyle(Color.white.opacity(0.68))
-            TabView {
+        return ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: KindeksLayout.gutter) {
                 ForEach(items) { item in
                     donationCarouselPage(item)
-                        .padding(.horizontal, 2)
+                        .frame(width: KindeksLayout.tileWidth, height: KindeksLayout.tileHeight)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .automatic))
-            .frame(height: KindeksLayout.tileHeight)
+            .scrollTargetLayout()
         }
-    }
-
-    private var carouselCaption: String {
-        switch context {
-        case .peer:
-            return "Swipe goals — pick one, then amount, then Send."
-        case .own:
-            if appState.selectedReceiver != nil {
-                return "Their goals for this donation (swipe for more)."
-            }
-            return "Your goals on this phone (up to \(DonationGoalsLocalStore.maxGoalsPerAccount)). Swipe for add / partner slots."
-        }
+        .scrollTargetBehavior(.viewAligned)
+        .frame(height: KindeksLayout.tileHeight)
     }
 
     private func donationCarouselItems() -> [DonationCarouselItem] {
         let goals = appState.donationGoalsForCarousel(context: context)
         var items: [DonationCarouselItem] = goals.map { .goal($0) }
-        let canAdd: Bool = {
-            switch context {
-            case .peer:
-                return false
-            case .own:
-                return appState.selectedReceiver == nil && goals.count < DonationGoalsLocalStore.maxGoalsPerAccount
-            }
-        }()
-        if canAdd {
-            items.append(.addOwn)
+        guard case .own = context else { return items }
+
+        let maxGoals = DonationGoalsLocalStore.maxGoalsPerAccount
+        let remainingSlots = maxGoals - goals.count
+        guard remainingSlots > 0 else { return items }
+
+        // Пустое состояние: две плитки под фото целей; дальше — одна «Add goal», пока не упёрлись в лимит.
+        if goals.isEmpty {
+            let addCount = min(2, remainingSlots)
+            items.append(contentsOf: (0..<addCount).map { DonationCarouselItem.addOwn(slot: $0) })
+        } else {
+            items.append(.addOwn(slot: 0))
         }
-        items.append(.partnerStub(0))
-        items.append(.partnerStub(1))
         return items
     }
 
@@ -249,18 +195,6 @@ struct DashboardView: View {
                 )
             }
             .buttonStyle(KindeksPlainHeaderButtonStyle())
-        case .partnerStub(_):
-            Button {
-                showPartnerStubAlert = true
-            } label: {
-                DonationPlaceholderCardContent(
-                    systemImage: "hands.clap.fill",
-                    title: "Partner slot",
-                    subtitle: "Pick from sponsors or auto-suggestions",
-                    style: .donationMesh
-                )
-            }
-            .buttonStyle(KindeksPlainHeaderButtonStyle())
         }
     }
 
@@ -280,6 +214,7 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var thanksTiles: some View {
+        // Row 1 — Figma: session timer | owner notifications (incoming thanks / donations)
         KindeksGlassTile(mesh: .timerBlue, action: nil) {
             ThanksTimerGaugeContent(
                 minutes: thanksTimerMinutes,
@@ -296,45 +231,47 @@ struct DashboardView: View {
                 }
         }
 
-        // Middle-left (under timer): nearby / active peers — порядок как в обновлённом прототипе Figma.
-        NavigationLink(value: DashboardRoute.nearbySession) {
+        // Row 2 — Figma: swipeable stack of nearby vis-a-vis | send thanks (“K”)
+        thanksActivePeersTile
+
+        KindeksGlassTile(mesh: .brandK, action: handleSendThanksTap) {
+            ThanksSendKMarkContent()
+        }
+
+        // Row 3 — Figma: Aura | session availability + BLE (opens Nearby / session controls)
+        NavigationLink(value: DashboardRoute.aura) {
             KindeksGlassTile(mesh: .sphereGlow, action: nil) {
-                NearbyPeersTileContent(
-                    nearbyState: appState.nearbyState,
-                    peerCount: appState.receivers.count,
-                    sessionActive: appState.isAccepting
+                KindeksAuraCircleContent(state: appState.auraVisualState)
+            }
+        }
+        .buttonStyle(.plain)
+
+        NavigationLink(value: DashboardRoute.nearbySession) {
+            KindeksGlassTile(mesh: .sessionOrange, action: nil) {
+                SessionEndsContent(
+                    primaryText: sessionEndsDisplay,
+                    showUnderline: appState.isAccepting && appState.sessionRemainingSeconds > 0
                 )
             }
         }
         .buttonStyle(.plain)
+    }
 
-        NavigationLink(value: DashboardRoute.aura) {
-            KindeksGlassTile(mesh: .brandK, action: nil) {
-                KindeksAuraCircleContent()
-            }
-        }
-        .buttonStyle(.plain)
-
-        KindeksGlassTile(mesh: .thanksImage, action: handleDoubleTap, backing: {
+    /// Middle-left Thanks tile: photos of active peers (horizontal swipe) + “N active” badge.
+    private var thanksActivePeersTile: some View {
+        KindeksGlassTile(mesh: .thanksImage, action: nil, backing: {
             ZStack {
-                Group {
-                    if let profileAvatarData, let ui = UIImage(data: profileAvatarData) {
-                        Image(uiImage: ui)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        LinearGradient(
-                            colors: [
-                                KindeksPalette.orange.opacity(0.55),
-                                KindeksPalette.deepBlue.opacity(0.95)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                if appState.receivers.isEmpty {
+                    thanksActivePeersEmptyBacking
+                } else {
+                    TabView(selection: $thanksPeerCarouselIndex) {
+                        ForEach(Array(appState.receivers.enumerated()), id: \.element.id) { index, receiver in
+                            thanksPeerSlideImage(for: receiver)
+                                .tag(index)
+                        }
                     }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
                 KindeksPalette.overlayDark.opacity(0.2)
             }
         }, content: {
@@ -358,16 +295,55 @@ struct DashboardView: View {
                 Spacer(minLength: 0)
             }
         })
+    }
 
-        NavigationLink(value: DashboardRoute.nearbySession) {
-            KindeksGlassTile(mesh: .sessionOrange, action: nil) {
-                SessionEndsContent(
-                    primaryText: sessionEndsDisplay,
-                    showUnderline: appState.isAccepting && appState.sessionRemainingSeconds > 0
+    @ViewBuilder
+    private func thanksPeerSlideImage(for receiver: Receiver) -> some View {
+        Group {
+            if let data = receiver.avatarData, let ui = UIImage(data: data) {
+                Image(uiImage: ui)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    LinearGradient(
+                        colors: [
+                            KindeksPalette.orange.opacity(0.55),
+                            KindeksPalette.deepBlue.opacity(0.95)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    Image(systemName: receiver.icon)
+                        .font(.system(size: 44, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+    }
+
+    @ViewBuilder
+    private var thanksActivePeersEmptyBacking: some View {
+        Group {
+            if let profileAvatarData, let ui = UIImage(data: profileAvatarData) {
+                Image(uiImage: ui)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                LinearGradient(
+                    colors: [
+                        KindeksPalette.orange.opacity(0.55),
+                        KindeksPalette.deepBlue.opacity(0.95)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
             }
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
     }
 
     @ViewBuilder
@@ -415,12 +391,14 @@ struct DashboardView: View {
     }
 
     private var canSendDonation: Bool {
-        appState.selectedReceiver != nil
+        guard case .peer = context else { return false }
+        return appState.donationRecipient != nil
             && appState.selectedDonationGoalId != nil
             && appState.selectedDonationAmount != nil
     }
 
-    private func handleDoubleTap() {
+    /// Figma: “K” tile — send thanks (same rules as previous double-tap on the photo tile).
+    private func handleSendThanksTap() {
         if appState.isAccepting, appState.pendingInvite != nil {
             appState.sendThanks()
             showSuccessBurst()
@@ -552,6 +530,24 @@ private struct SendTileContent: View {
                 .font(KindeksFont.regular(11))
                 .foregroundStyle(Color.white.opacity(enabled ? 0.95 : 0.45))
                 .padding(.bottom, 14)
+        }
+    }
+}
+
+/// Figma middle-right Thanks tile: gradient + circular “K” — send thanks.
+private struct ThanksSendKMarkContent: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.white.opacity(0.22))
+                .frame(width: 72, height: 72)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                )
+            Text("K")
+                .font(KindeksFont.medium(34))
+                .foregroundStyle(Color.white)
         }
     }
 }
@@ -712,32 +708,17 @@ private struct TimerNeedleAndDot: View {
     }
 }
 
-/// Плитка Aura: полупрозрачный голубой круг без марки (логотип из Figma позже; цвет плитки — от ауры, отдельно).
+/// Превью ауры на плитке K (без цифр).
 private struct KindeksAuraCircleContent: View {
+    let state: AuraVisualState
+
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            KindeksPalette.sky.opacity(0.55),
-                            KindeksPalette.mint.opacity(0.38),
-                            KindeksPalette.sky.opacity(0.22)
-                        ],
-                        center: .init(x: 0.38, y: 0.32),
-                        startRadius: 2,
-                        endRadius: 44
-                    )
-                )
-            Circle()
-                .fill(.ultraThinMaterial.opacity(0.38))
-        }
-        .frame(width: 72, height: 72)
-        .clipShape(Circle())
-        .overlay(
-            Circle()
-                .stroke(Color.white.opacity(0.32), lineWidth: 1)
-        )
+        AuraOrbView(state: state, diameter: 76)
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.white.opacity(0.28), lineWidth: 1)
+            )
     }
 }
 
@@ -754,65 +735,6 @@ private struct KindeksHeaderBackMark: View {
                 .offset(x: -3)
         }
         .frame(minWidth: 28, minHeight: 24, alignment: .leading)
-    }
-}
-
-/// Figma-style orb tile, plus product affordance: open BLE peer list (not in the static mock).
-private struct NearbyPeersTileContent: View {
-    let nearbyState: NearbyState
-    let peerCount: Int
-    let sessionActive: Bool
-
-    private var caption: String {
-        if !sessionActive {
-            return "Session off · tap opens list"
-        }
-        switch nearbyState {
-        case .idle:
-            return "Tap to see who’s around"
-        case .searching:
-            return "Searching…"
-        case .found:
-            return peerCount == 1 ? "1 person nearby" : "\(peerCount) nearby"
-        }
-    }
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color(red: 0.55, green: 0.38, blue: 0.95),
-                            Color(red: 0.25, green: 0.45, blue: 0.92),
-                            Color(red: 0.35, green: 0.2, blue: 0.48),
-                            .clear
-                        ],
-                        center: .init(x: 0.42, y: 0.45),
-                        startRadius: 4,
-                        endRadius: 48
-                    )
-                )
-                .frame(width: 88, height: 88)
-                .blur(radius: 3)
-                .offset(y: 6)
-
-            VStack(spacing: 6) {
-                Image(systemName: "dot.radiowaves.left.and.right")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.92))
-                Text("Nearby")
-                    .font(KindeksFont.medium(20))
-                    .foregroundStyle(Color.white)
-                Text(caption)
-                    .font(KindeksFont.regular(11))
-                    .foregroundStyle(Color.white.opacity(0.72))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 8)
-            }
-        }
     }
 }
 
@@ -1094,11 +1016,15 @@ private struct DonationGoalCardContent: View {
                 Text(goal.title)
                     .font(KindeksFont.medium(20))
                     .foregroundStyle(Color.white)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.85)
                     .shadow(color: .black.opacity(0.35), radius: 2, x: 0, y: 1)
                 if !goal.subtitle.isEmpty {
                     Text(goal.subtitle)
                         .font(KindeksFont.regular(13))
                         .foregroundStyle(Color.white.opacity(0.88))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.9)
                         .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
                 }
                 Spacer(minLength: 0)
@@ -1106,7 +1032,8 @@ private struct DonationGoalCardContent: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(16)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: KindeksLayout.tileWidth, height: KindeksLayout.tileHeight)
+        .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous)
                 .stroke(isSelected ? KindeksPalette.mint : Color.white.opacity(0.2), lineWidth: isSelected ? 2.5 : 1)
@@ -1151,7 +1078,8 @@ private struct DonationPlaceholderCardContent: View {
             }
             .padding(12)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: KindeksLayout.tileWidth, height: KindeksLayout.tileHeight)
+        .clipShape(RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: KindeksLayout.cornerRadius, style: .continuous)
                 .stroke(Color.white.opacity(0.22), lineWidth: 1)

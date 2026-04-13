@@ -9,14 +9,13 @@ struct DonationGoal: Identifiable, Codable, Equatable, Hashable {
 
 enum DonationCarouselItem: Identifiable, Hashable {
     case goal(DonationGoal)
-    case addOwn
-    case partnerStub(Int)
+    /// Own Kindeks: empty slot for a new goal (`slot` keeps ids unique when two defaults show).
+    case addOwn(slot: Int)
 
     var id: String {
         switch self {
         case .goal(let g): return "g-\(g.id.uuidString)"
-        case .addOwn: return "add"
-        case .partnerStub(let i): return "p-\(i)"
+        case .addOwn(let slot): return "add-\(slot)"
         }
     }
 }
