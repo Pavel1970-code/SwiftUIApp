@@ -3,6 +3,9 @@ import SwiftUI
 import Combine
 import CoreBluetooth
 import UIKit
+#if canImport(FirebaseFirestore)
+import FirebaseFirestore
+#endif
 
 /// Tab order in the dashboard segmented control: **left → right** = Donations, then Thanks.
 enum DashboardTab: String, CaseIterable, Identifiable {
@@ -113,11 +116,14 @@ final class AppState: ObservableObject {
     @Published var selectedDonationAmount: Int?
 
     private let ble = BLEGiftSessionManager.shared
+    private let statsStore = FirebaseStatsStore.shared
     private var peripheralForReceiverId: [UUID: CBPeripheral] = [:]
     private var profileByPeripheralId: [UUID: (nickname: String, avatarData: Data?)] = [:]
 
     private var sessionTimer: AnyCancellable?
     private var nearbyWorkItem: DispatchWorkItem?
+    private let actionCooldownSeconds: TimeInterval = 15
+    private var nextOutgoingAllowedAt: Date = .distantPast
 
     init() {
         ble.onScanPeersChanged = { [weak self] peripherals in
@@ -145,6 +151,8 @@ final class AppState: ObservableObject {
     func sendThanks() {
         guard let invite = pendingInvite else { return }
         ble.sendThanks(invite)
+        registerActionCooldown()
+        statsStore.trackThanksSent()
 
         // Receiver side: we show "Nearby #1" as the sender label (MVP).
         let receiver = selectedReceiver
@@ -185,11 +193,13 @@ final class AppState: ObservableObject {
     }
 
     private func startSession() {
-        sessionRemainingSeconds = 2 * 60 * 60
+        sessionRemainingSeconds = 45 * 60
         nearbyState = .searching
         pendingInvite = nil
         selectedReceiver = nil
+        nextOutgoingAllowedAt = .distantPast
         ble.setReceiverAccepting(true)
+        ble.startScanning()
         startTimer()
     }
 
@@ -203,6 +213,7 @@ final class AppState: ObservableObject {
         selectedReceiver = nil
         pendingInvite = nil
         ble.setReceiverAccepting(false)
+        ble.stopScanning()
     }
 
     private func startTimer() {
@@ -233,6 +244,7 @@ final class AppState: ObservableObject {
 
     // MARK: - BLE scanning helpers
     func startBLEScanning() {
+        guard isAccepting else { return }
         nearbyState = .searching
         ble.startScanning()
     }
@@ -246,6 +258,16 @@ final class AppState: ObservableObject {
         } else {
             nearbyState = .searching
         }
+    }
+
+    private func canStartOutgoingAction() -> Bool {
+        guard isAccepting else { return false }
+        guard pendingInvite == nil else { return false } // Prioritize incoming actions first.
+        return Date() >= nextOutgoingAllowedAt
+    }
+
+    private func registerActionCooldown() {
+        nextOutgoingAllowedAt = Date().addingTimeInterval(actionCooldownSeconds)
     }
 
     private func updateNearbyReceivers(from peripherals: [CBPeripheral]) {
@@ -267,6 +289,7 @@ final class AppState: ObservableObject {
     private func handleInviteReceived(_ invite: BLEInvite) {
         pendingInvite = invite
         nearbyState = .found
+        registerActionCooldown()
 
         // MVP: on receiver we don't know which peer label (we just display a generic "Nearby #1").
         selectedReceiver = Receiver(
@@ -292,6 +315,7 @@ final class AppState: ObservableObject {
 
     // MARK: - Donor send over BLE
     func sendDonationOverBLE() async -> Bool {
+        guard canStartOutgoingAction() else { return false }
         guard let receiver = selectedReceiver else { return false }
 
         let eventKind: BLEInviteEventKind
@@ -336,8 +360,51 @@ final class AppState: ObservableObject {
         selectedDonationAmount = nil
         selectedGiftId = nil
         nearbyState = .idle
+        registerActionCooldown()
+        if eventKind == .money {
+            statsStore.trackDonation(amountCents: Int(value))
+        }
 
         return true
+    }
+}
+
+@MainActor
+final class FirebaseStatsStore {
+    static let shared = FirebaseStatsStore()
+
+    private init() {}
+
+    func trackThanksSent() {
+        #if canImport(FirebaseFirestore)
+        let payload: [String: Any] = [
+            "thanks_sent_total": FieldValue.increment(Int64(1)),
+            "updated_at": FieldValue.serverTimestamp()
+        ]
+        Firestore.firestore()
+            .collection("stats")
+            .document("global")
+            .setData(payload, merge: true)
+        #endif
+    }
+
+    func trackDonation(amountCents: Int) {
+        guard amountCents > 0 else { return }
+        #if canImport(FirebaseFirestore)
+        var payload: [String: Any] = [
+            "updated_at": FieldValue.serverTimestamp()
+        ]
+        if amountCents == 100 {
+            payload["donation_1usd_total"] = FieldValue.increment(Int64(1))
+        } else {
+            payload["donation_custom_total"] = FieldValue.increment(Int64(1))
+            payload["donation_amount_cents_total"] = FieldValue.increment(Int64(amountCents))
+        }
+        Firestore.firestore()
+            .collection("stats")
+            .document("global")
+            .setData(payload, merge: true)
+        #endif
     }
 }
 

@@ -50,12 +50,6 @@ struct ReceiverPickerSheet: View {
             }
             .toolbarBackground(KindeksPalette.background, for: .navigationBar)
         }
-        .onAppear {
-            appState.startBLEScanning()
-        }
-        .onDisappear {
-            appState.stopBLEScanning()
-        }
         .preferredColorScheme(.dark)
     }
 

@@ -23,6 +23,7 @@
 		F50FB3A32F8A36C400F5BAFF /* SwiftUI_AppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50FB3A22F8A36C400F5BAFF /* SwiftUI_AppUITests.swift */; };
 		F50FB3A52F8A36C400F5BAFF /* SwiftUI_AppUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50FB3A42F8A36C400F5BAFF /* SwiftUI_AppUITestsLaunchTests.swift */; };
 		F50FB3B22F8A36DF00F5BAFF /* SwiftUI_AppTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50FB3B12F8A36DF00F5BAFF /* SwiftUI_AppTests.swift */; };
+		F52592DB2F8CD50C00AC27CA /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F52592DA2F8CD50C00AC27CA /* GoogleService-Info.plist */; };
 		F54DA8472F7786DD00864086 /* Algorithms in Frameworks */ = {isa = PBXBuildFile; productRef = F54DA8462F7786DD00864086 /* Algorithms */; };
 		F56F712D2F760FDB00433536 /* SwiftUI_AppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */; };
 		F56F712F2F760FDB00433536 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F56F712E2F760FDB00433536 /* ContentView.swift */; };
@@ -68,6 +69,7 @@
 		F50FB3A42F8A36C400F5BAFF /* SwiftUI_AppUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_AppUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		F50FB3AF2F8A36DF00F5BAFF /* SwiftUI AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "SwiftUI AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F50FB3B12F8A36DF00F5BAFF /* SwiftUI_AppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_AppTests.swift; sourceTree = "<group>"; };
+		F52592DA2F8CD50C00AC27CA /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F56F71292F760FDB00433536 /* SwiftUI App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SwiftUI App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F56F712C2F760FDB00433536 /* SwiftUI_AppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftUI_AppApp.swift; sourceTree = "<group>"; };
 		F56F712E2F760FDB00433536 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -126,6 +128,7 @@
 		F56F71202F760FDB00433536 = {
 			isa = PBXGroup;
 			children = (
+				F52592DA2F8CD50C00AC27CA /* GoogleService-Info.plist */,
 				F56F712B2F760FDB00433536 /* SwiftUI App */,
 				F56F71412F760FE000433536 /* SwiftUI AppTests */,
 				F56F714B2F760FE000433536 /* SwiftUI AppUITests */,
@@ -321,6 +324,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F56F71342F760FDF00433536 /* Preview Assets.xcassets in Resources */,
+				F52592DB2F8CD50C00AC27CA /* GoogleService-Info.plist in Resources */,
 				F56F71312F760FDF00433536 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

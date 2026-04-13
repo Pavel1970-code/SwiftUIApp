@@ -71,6 +71,9 @@ struct DashboardView: View {
             case .aura:
                 AuraView()
                     .environmentObject(appState)
+            case .nearbySession:
+                NearbySessionView(onViewPeerKindeks: onViewPeerKindeks)
+                    .environmentObject(appState)
             }
         }
     }
@@ -101,7 +104,7 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var thanksTiles: some View {
-        KindeksGlassTile(mesh: .timerBlue, action: appState.toggleAccepting) {
+        KindeksGlassTile(mesh: .timerBlue, action: nil) {
             ThanksTimerGaugeContent(
                 minutes: thanksTimerMinutes,
                 progress: thanksSessionProgress
@@ -113,13 +116,16 @@ struct DashboardView: View {
         }
 
         // Middle-left (under timer): nearby / active peers — порядок как в обновлённом прототипе Figma.
-        KindeksGlassTile(mesh: .sphereGlow, action: { showReceiverSheet = true }) {
-            NearbyPeersTileContent(
-                nearbyState: appState.nearbyState,
-                peerCount: appState.receivers.count,
-                sessionActive: appState.isAccepting
-            )
+        NavigationLink(value: DashboardRoute.nearbySession) {
+            KindeksGlassTile(mesh: .sphereGlow, action: nil) {
+                NearbyPeersTileContent(
+                    nearbyState: appState.nearbyState,
+                    peerCount: appState.receivers.count,
+                    sessionActive: appState.isAccepting
+                )
+            }
         }
+        .buttonStyle(.plain)
 
         NavigationLink(value: DashboardRoute.aura) {
             KindeksGlassTile(mesh: .brandK, action: nil) {
@@ -231,7 +237,7 @@ struct DashboardView: View {
     }
 
     private var thanksSessionProgress: CGFloat {
-        let total = CGFloat(2 * 60 * 60)
+        let total = CGFloat(45 * 60)
         guard appState.isAccepting, total > 0 else { return 0 }
         return CGFloat(appState.sessionRemainingSeconds) / total
     }
@@ -339,6 +345,7 @@ private struct KindeksPlainHeaderButtonStyle: ButtonStyle {
 
 private enum DashboardRoute: Hashable {
     case aura
+    case nearbySession
 }
 
 private struct PlusCenterContent: View {
@@ -740,6 +747,127 @@ private struct SessionEndsDiagonalHatch: View {
             }
         }
         .allowsHitTesting(false)
+    }
+}
+
+private struct NearbySessionView: View {
+    @EnvironmentObject private var appState: AppState
+
+    var onViewPeerKindeks: ((Receiver) -> Void)? = nil
+
+    private var sessionStatusText: String {
+        if appState.isAccepting {
+            let mins = max(1, appState.sessionRemainingSeconds / 60)
+            return "Session active · ends in \(mins)m"
+        }
+        return "Session off"
+    }
+
+    var body: some View {
+        ZStack {
+            KindeksScreenBackground()
+            VStack(spacing: 14) {
+                Toggle(isOn: Binding(
+                    get: { appState.isAccepting },
+                    set: { newValue in
+                        if appState.isAccepting != newValue {
+                            appState.toggleAccepting()
+                        }
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("45-min session")
+                            .font(KindeksFont.medium(18))
+                            .foregroundStyle(Color.white)
+                        Text(sessionStatusText)
+                            .font(KindeksFont.regular(12))
+                            .foregroundStyle(Color.white.opacity(0.72))
+                    }
+                }
+                .tint(KindeksPalette.mint)
+                .padding(14)
+                .background(.ultraThinMaterial.opacity(0.42))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+
+                if appState.receivers.isEmpty {
+                    VStack(spacing: 6) {
+                        Text(appState.isAccepting ? "Searching nearby users..." : "Start session to search nearby users")
+                            .font(KindeksFont.regular(13))
+                            .foregroundStyle(Color.white.opacity(0.76))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 90)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                } else {
+                    List(appState.receivers) { receiver in
+                        Button {
+                            appState.selectedReceiver = receiver
+                        } label: {
+                            HStack(spacing: 12) {
+                                avatar(for: receiver)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(receiver.name)
+                                        .foregroundStyle(.white.opacity(0.94))
+                                    if appState.selectedReceiver == receiver {
+                                        Text("Selected")
+                                            .font(KindeksFont.regular(11))
+                                            .foregroundStyle(KindeksPalette.mint)
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listRowBackground(Color.clear)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if let onViewPeerKindeks {
+                                Button {
+                                    onViewPeerKindeks(receiver)
+                                } label: {
+                                    Text("Kindeks")
+                                }
+                                .tint(Color(red: 0.42, green: 0.35, blue: 0.75))
+                            }
+                        }
+                    }
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .listStyle(.plain)
+                }
+            }
+            .padding(.horizontal, KindeksLayout.marginHorizontal)
+            .padding(.top, 12)
+            .padding(.bottom, 20)
+        }
+        .navigationTitle("Nearby")
+        .navigationBarTitleDisplayMode(.inline)
+        .preferredColorScheme(.dark)
+    }
+
+    @ViewBuilder
+    private func avatar(for receiver: Receiver) -> some View {
+        if let data = receiver.avatarData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 34, height: 34)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                )
+        } else {
+            Image(systemName: receiver.icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(width: 34, height: 34)
+                .background(Color.white.opacity(0.12))
+                .clipShape(Circle())
+        }
     }
 }
 
