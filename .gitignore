@@ -17,9 +17,6 @@ DerivedDataSim/
 # CocoaPods (if ever used)
 Pods/
 
-# SPM caches inside Xcode workspace (optional)
-**/xcshareddata/swiftpm/
-
 # Local duplicates / stray files — не включать в архив для переноса
 **/GoogleService-Info (*).plist
 SwiftUI App/BLEGiftSessionManager.swift
