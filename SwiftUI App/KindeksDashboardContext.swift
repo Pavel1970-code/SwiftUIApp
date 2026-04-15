@@ -3,7 +3,7 @@ import Foundation
 /// Whose Kindeks dashboard is shown. Tiles stay the same; only the headline changes.
 enum KindeksDashboardContext: Hashable {
     case own
-    case peer(displayName: String, avatarData: Data?)
+    case peer(id: UUID, displayName: String, avatarData: Data?)
 }
 
 /// Push onto `NavigationStack` to open the same dashboard UI for a discovered peer.

@@ -21,15 +21,23 @@ struct ContentView: View {
                         }
                     )
                     .environmentObject(appState)
+                    .onChange(of: kindeksPath.count) { _, newCount in
+                        if newCount == 0 {
+                            appState.clearDonationRecipient()
+                        }
+                    }
                     .navigationDestination(for: PeerKindeksDestination.self) { dest in
                         DashboardView(
-                            context: .peer(displayName: dest.displayName, avatarData: dest.avatarData),
+                            context: .peer(id: dest.id, displayName: dest.displayName, avatarData: dest.avatarData),
                             profileAvatarData: dest.avatarData,
                             onViewPeerKindeks: { receiver in
                                 kindeksPath.append(PeerKindeksDestination(receiver: receiver))
                             }
                         )
                         .environmentObject(appState)
+                        .task(id: dest.id) {
+                            appState.syncDonationRecipient(with: dest)
+                        }
                     }
                 }
             }

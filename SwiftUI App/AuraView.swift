@@ -6,6 +6,29 @@ struct AuraView: View {
     var body: some View {
         List {
             Section {
+                VStack(spacing: 14) {
+                    AuraOrbView(state: appState.auraVisualState, diameter: 200)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
+                    Text(appState.auraVisualState.narrative)
+                        .font(KindeksFont.medium(17))
+                        .foregroundStyle(.white.opacity(0.94))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                    Text("Никаких баллов и рейтингов — только ощущение. Данные считаются на устройстве и остаются скрытыми.")
+                        .font(KindeksFont.regular(12))
+                        .foregroundStyle(.white.opacity(0.55))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 12)
+                }
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .listRowBackground(KindeksAuraRowBackground())
+            } header: {
+                sectionHeader("Aura")
+            }
+
+            Section {
                 if appState.history.isEmpty {
                     Text("No activity yet")
                         .font(KindeksFont.regular(14))
